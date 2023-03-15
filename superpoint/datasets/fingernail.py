@@ -7,7 +7,7 @@ from .utils import pipeline
 from superpoint.settings import DATA_PATH, EXPER_PATH
 
 
-class Coco(BaseDataset):
+class Fingernail(BaseDataset):
     default_config = {
         'labels': None,
         'cache_in_memory': False,
@@ -38,7 +38,7 @@ class Coco(BaseDataset):
     }
 
     def _init_dataset(self, **config):
-        base_path = Path(DATA_PATH, 'COCO/train2014/')
+        base_path = Path(DATA_PATH, 'fingernail/train/')
         image_paths = list(base_path.iterdir())
         if config['truncate']:
             image_paths = image_paths[:config['truncate']]
@@ -46,7 +46,7 @@ class Coco(BaseDataset):
         image_paths = [str(p) for p in image_paths]
         files = {'image_paths': image_paths, 'names': names}
 
-        if config['labels']:  # ground truth label file path
+        if config['labels']:
             label_paths = []
             for n in names:
                 p = Path(EXPER_PATH, config['labels'], '{}.npz'.format(n))

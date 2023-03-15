@@ -28,7 +28,7 @@ class MagicPoint(BaseModel):
         def net(image):
             if config['data_format'] == 'channels_first':
                 image = tf.transpose(image, [0, 3, 1, 2])
-            features = vgg_backbone(image, **config)
+            features = vgg_backbone(image, **config)  # [b, H/8, W/8, F]
             outputs = detector_head(features, **config)
             return outputs
 

@@ -47,7 +47,7 @@ model:
     kernel_reg: 0.
     detection_threshold: 0.001 # 1/65
     nms: 4
-train_iter: 50000
+train_iter: 200000
 eval_iter: 200
 validation_interval: 1000
 seed: 0

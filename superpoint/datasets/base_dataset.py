@@ -25,11 +25,11 @@ class BaseDataset(metaclass=ABCMeta):
         This method should configure the dataset for later fetching through `_get_data`,
         such as downloading the data if it is not stored locally, or reading the list of
         data files from disk. Ideally, especially in the case of large images, this
-        method shoudl NOT read all the dataset into memory, but rather prepare for faster
-        seubsequent fetching.
+        method should NOT read all the dataset into memory, but rather prepare for faster
+        subsequent fetching.
 
         Arguments:
-            config: A configuration dictionary, given during the object instantiantion.
+            config: A configuration dictionary, given during the object instantiation.
 
         Returns:
             An object subsequently passed to `_get_data`, e.g. a list of file paths and
@@ -52,7 +52,7 @@ class BaseDataset(metaclass=ABCMeta):
             dataset: An object returned by the `_init_dataset` method.
             split_name: A string, the name of the requested split, either `"training"`,
                 `"validation"` or `"test"`.
-            config: A configuration dictionary, given during the object instantiantion.
+            config: A configuration dictionary, given during the object instantiation.
 
         Returns:
             An object of type `tf.data.Dataset` corresponding to the corresponding split.
@@ -60,7 +60,7 @@ class BaseDataset(metaclass=ABCMeta):
         raise NotImplementedError
 
     def get_tf_datasets(self):
-        """"Exposes data splits consistent with the Tensorflow `tf.data` API.
+        """Exposes data splits consistent with the Tensorflow `tf.data` API.
 
         Returns:
             A dictionary mapping split names (`str`, either `"training"`, `"validation"`,

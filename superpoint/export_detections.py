@@ -1,5 +1,9 @@
 import numpy as np
 import os
+import tensorflow as tf
+os.environ['CUDA_VISIBLE_DEVICES'] = "1"
+gpu = tf.config.experimental.list_physical_devices('GPU')
+tf.config.experimental.set_memory_growth(device=gpu[0], enable=True)
 import argparse
 import yaml
 from pathlib import Path

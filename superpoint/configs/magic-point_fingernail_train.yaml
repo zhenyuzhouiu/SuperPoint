@@ -1,8 +1,8 @@
 data:
-    name: 'coco'
-    labels: outputs/magic-point_coco-export1/  # Complete with your export labels
+    name: 'fingernail'
+    labels: outputs/magic_point_fingernail-label-240-320  # Complete with your export labels
     cache_in_memory: false
-    validation_size: 192
+    validation_size: 129
     augmentation:
         photometric:
             enable: true
@@ -34,11 +34,11 @@ data:
             valid_border_margin: 3
 model:
     name: 'magic_point'
-    batch_size: 32
-    eval_batch_size: 32
+    batch_size: 43
+    eval_batch_size: 43
     learning_rate: 0.001
     detection_threshold: 0.001 # 0.015
     nms: 4
     # top_k: 300
-train_iter: 18000
+train_iter: 18000000
 validation_interval: 1000

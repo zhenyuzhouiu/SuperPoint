@@ -1,10 +1,10 @@
 data:
-    name: 'coco'
+    name: 'fingernail'
     cache_in_memory: false
-    validation_size: 100
+    validation_size: 129
 model:
     name: 'magic_point'
-    batch_size: 128
+    batch_size: 43
     learning_rate: 0.001
     detection_threshold: 0.015  # 0.001
     nms: 4
