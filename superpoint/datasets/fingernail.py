@@ -38,6 +38,18 @@ class Fingernail(BaseDataset):
     }
 
     def _init_dataset(self, **config):
+        """
+
+        Args:
+            **config:
+
+        Returns:
+            files = {'image_paths':,
+                     'names':, p.stem for p in image_paths
+                     'label_path':
+                     }
+
+        """
         base_path = Path(DATA_PATH, 'fingernail/train/')
         image_paths = list(base_path.iterdir())
         if config['truncate']:
@@ -60,12 +72,23 @@ class Fingernail(BaseDataset):
         return files
 
     def _get_data(self, files, split_name, **config):
+        """
+
+        Args:
+            files: dictionary
+            split_name: ['training', 'validation', 'test']
+            **config: **kwargs
+
+        Returns:
+            data: tf.data.Dataset.zip({'image', 'names', 'keypoints', 'valid_mask', 'keypoint_map'})
+
+        """
         has_keypoints = 'label_paths' in files
         is_training = split_name == 'training'
 
         def _read_image(path):
             image = tf.read_file(path)
-            image = tf.image.decode_png(image, channels=3)
+            image = tf.image.decode_jpeg(image, channels=3)
             return tf.cast(image, tf.float32)
 
         def _preprocess(image):
@@ -76,6 +99,7 @@ class Fingernail(BaseDataset):
             return image
 
         # Python function
+        # Get the ground truth points
         def _read_points(filename):
             return np.load(filename.decode('utf-8'))['points'].astype(np.float32)
 
@@ -85,11 +109,11 @@ class Fingernail(BaseDataset):
         images = images.map(_preprocess)
         data = tf.data.Dataset.zip({'image': images, 'name': names})
 
-        # Add keypoints
+        # Add key points
         if has_keypoints:
             kp = tf.data.Dataset.from_tensor_slices(files['label_paths'])
             kp = kp.map(lambda path: tf.py_func(_read_points, [path], tf.float32))
-            kp = kp.map(lambda points: tf.reshape(points, [-1, 2]))
+            kp = kp.map(lambda points: tf.reshape(points, [-1, 2]))  # [num_points, 2]
             data = tf.data.Dataset.zip((data, kp)).map(
                     lambda d, k: {**d, 'keypoints': k})
             data = data.map(pipeline.add_dummy_valid_mask)

@@ -57,12 +57,30 @@ def homographic_augmentation(data, add_homography=False, **config):
 
 
 def add_dummy_valid_mask(data):
+    """
+    Add valid_mask which is a matrix with ones, and the valid_mask has the same shape of data['image']
+    Args:
+        data:
+
+    Returns:
+        {**data, 'valid_mask': valid_mask}
+
+    """
     with tf.name_scope('dummy_valid_mask'):
         valid_mask = tf.ones(tf.shape(data['image'])[:2], dtype=tf.int32)
     return {**data, 'valid_mask': valid_mask}
 
 
 def add_keypoint_map(data):
+    """
+    Add keypoint_map attribute based on data
+    Args:
+        data:
+
+    Returns:
+        data: {**data, 'keypoint_map': kmap}
+
+    """
     with tf.name_scope('add_keypoint_map'):
         image_shape = tf.shape(data['image'])[:2]
         kp = tf.minimum(tf.to_int32(tf.round(data['keypoints'])), image_shape-1)

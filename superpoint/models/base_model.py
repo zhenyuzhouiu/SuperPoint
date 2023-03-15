@@ -241,9 +241,10 @@ class BaseModel(metaclass=ABCMeta):
                         self.dataset_iterators[n] = d.make_initializable_iterator()
                     output_types = d.output_types
                     output_shapes = d.output_shapes
-                    self.datasets[n] = d
+                    self.datasets[n] = d  # change the dataset to d with batch_size shape
 
                     # Perform compatibility checks with the inputs of the child model
+                    # self.input_spec is defined on the MagicPoint class
                     for i, spec in self.input_spec.items():
                         assert i in output_shapes
                         tf.TensorShape(output_shapes[i]).assert_is_compatible_with(

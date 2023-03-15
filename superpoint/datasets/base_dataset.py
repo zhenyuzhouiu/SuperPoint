@@ -99,12 +99,15 @@ class BaseDataset(metaclass=ABCMeta):
         # Update config
         self.config = dict_update(getattr(self, 'default_config', {}), config)
 
+        # self._init_dataset() return files ={'image_paths', 'names', 'label_paths'}
         self.dataset = self._init_dataset(**self.config)
 
         self.tf_splits = {}
         self.tf_next = {}
         with tf.device('/cpu:0'):
             for n in self.split_names:
+                # self._get_data() return data
+                #  data: tf.data.Dataset.zip({'image', 'names', 'keypoints', 'valid_mask', 'keypoint_map'})
                 self.tf_splits[n] = self._get_data(self.dataset, n, **self.config)
                 self.tf_next[n] = self.tf_splits[n].make_one_shot_iterator().get_next()
         self.end_set = tf.errors.OutOfRangeError
