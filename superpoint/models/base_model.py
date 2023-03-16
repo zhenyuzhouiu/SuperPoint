@@ -136,7 +136,21 @@ class BaseModel(metaclass=ABCMeta):
         return shards
 
     def _gpu_tower(self, data, mode, batch_size):
-        # Split the batch between the GPUs (data parallelism)
+        """
+        Split the batch between the GPUs (data parallelism)
+        Args:
+            data:
+            mode:
+            batch_size:
+
+        Returns:
+            if mode == Mode.TRAIN:
+                return tower_losses, tower_gradvars, update_ops
+            elif mode == Mode.EVAL:
+                return tower_metrics
+
+        """
+
         with tf.device('/cpu:0'):
             with tf.name_scope('{}_data_sharding'.format(mode)):
                 shards = self._unstack_nested_dict(data, batch_size*self.n_gpus)
@@ -184,6 +198,7 @@ class BaseModel(metaclass=ABCMeta):
                  for v in z]) for k in tower_preds[0]}
 
     def _train_graph(self, data):
+        # tower_gradvars = zip(grad, model_params)
         tower_losses, tower_gradvars, update_ops = self._gpu_tower(
                 data, Mode.TRAIN, self.config['batch_size'])
 
@@ -223,9 +238,15 @@ class BaseModel(metaclass=ABCMeta):
         self.pred_out = {n: tf.identity(p, name=n) for n, p in pred_out.items()}
 
     def _build_graph(self):
+        """
+        While create new datasets, it will also build train, eval and predict graph
+        Returns:
+
+        """
         # Training and evaluation network, if tf datasets provided
         if self.datasets:
             # Generate iterators for the given tf datasets
+            # different type of iterator for training and evaluation
             self.dataset_iterators = {}
             with tf.device('/cpu:0'):
                 for n, d in self.datasets.items():
@@ -234,10 +255,12 @@ class BaseModel(metaclass=ABCMeta):
                         train_batch = self.config['batch_size']*self.n_gpus
                         d = d.repeat().padded_batch(
                                 train_batch, output_shapes).prefetch(train_batch)
+                        # one_shot_iterator is a simple iterator, and it only recursive dataset one time
                         self.dataset_iterators[n] = d.make_one_shot_iterator()
                     else:
                         d = d.padded_batch(self.config['eval_batch_size']*self.n_gpus,
                                            output_shapes)
+                        # initializable_iterator can support p
                         self.dataset_iterators[n] = d.make_initializable_iterator()
                     output_types = d.output_types
                     output_shapes = d.output_shapes
@@ -291,6 +314,7 @@ class BaseModel(metaclass=ABCMeta):
     def train(self, iterations, validation_interval=100, output_dir=None, profile=False,
               save_interval=None, checkpoint_path=None, keep_checkpoints=1):
         assert self.trainable, 'Model is not trainable.'
+        # self.datasets contains training, validation and test set
         assert 'training' in self.datasets, 'Training dataset is required.'
         if output_dir is not None:
             train_writer = tf.summary.FileWriter(output_dir)
@@ -308,6 +332,7 @@ class BaseModel(metaclass=ABCMeta):
 
         tf.logging.info('Start training')
         for i in range(iterations):
+            # self.sess = tf.Session(config=sess_config) on the self._build_graph(self)
             loss, summaries, _ = self.sess.run(
                     [self.loss, self.summaries, self.trainer],
                     feed_dict={self.handle: self.dataset_handles['training']},

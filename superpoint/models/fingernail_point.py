@@ -2,11 +2,11 @@ import tensorflow as tf
 
 from .base_model import BaseModel, Mode
 from .backbones.vgg import vgg_backbone
-from .utils import detector_head, detector_loss, box_nms
+from .utils import detector_head, detector_loss, box_nms, detector_mse_loss
 from .homographies import homography_adaptation
 
 
-class MagicPoint(BaseModel):
+class FingernailPoint(BaseModel):
     input_spec = {
             'image': {'shape': [None, None, None, 1], 'type': tf.float32}
     }
@@ -22,29 +22,13 @@ class MagicPoint(BaseModel):
     }
 
     def _model(self, inputs, mode, **config):
-        """
-
-        Args:
-            inputs:
-            mode:
-            **config:
-
-        Returns:
-            outputs = {
-                        'logits': x,
-                        'prob': prob,
-                        'prob_nmx]: prob_nmx,
-                        'pred': pred
-                        }
-        """
         config['training'] = (mode == Mode.TRAIN)
         image = inputs['image']
 
         def net(image):
             if config['data_format'] == 'channels_first':
                 image = tf.transpose(image, [0, 3, 1, 2])
-            features = vgg_backbone(image, **config)  # [b, H/8, W/8, F] or channels_first [b, F, H/8, W/8]
-            # outputs = {'logits': x, 'prob': prob}
+            features = vgg_backbone(image, **config)  # [b, H/8, W/8, F]
             outputs = detector_head(features, **config)
             return outputs
 
@@ -67,8 +51,8 @@ class MagicPoint(BaseModel):
     def _loss(self, outputs, inputs, **config):
         if config['data_format'] == 'channels_first':
             outputs['logits'] = tf.transpose(outputs['logits'], [0, 2, 3, 1])
-        return detector_loss(inputs['keypoint_map'], outputs['logits'],
-                             valid_mask=inputs['valid_mask'], **config)
+        return detector_mse_loss(inputs['keypoint_map'], outputs['prob'],
+                                 valid_mask=inputs['valid_mask'], **config)
 
     def _metrics(self, outputs, inputs, **config):
         pred = inputs['valid_mask'] * outputs['pred']

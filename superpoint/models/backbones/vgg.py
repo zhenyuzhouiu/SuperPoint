@@ -4,6 +4,22 @@ from tensorflow import layers as tfl
 
 def vgg_block(inputs, filters, kernel_size, name, data_format, training=False,
               batch_normalization=True, kernel_reg=0., **params):
+    """
+    A normal Conv layers with Convolution + Activation + Batch Normalization
+    Args:
+        inputs:
+        filters:
+        kernel_size:
+        name:
+        data_format:
+        training:
+        batch_normalization:
+        kernel_reg:
+        **params:
+
+    Returns:
+
+    """
     with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
         x = tfl.conv2d(inputs, filters, kernel_size, name='conv',
                        kernel_regularizer=tf.contrib.layers.l2_regularizer(kernel_reg),
@@ -16,6 +32,16 @@ def vgg_block(inputs, filters, kernel_size, name, data_format, training=False,
 
 
 def vgg_backbone(inputs, **config):
+    """
+    The VGG Backbone will down sample 1/8 of the input, and increase 3 channels to 128 channels
+    Args:
+        inputs:
+        **config:
+
+    Returns:
+        x
+
+    """
     params_conv = {'padding': 'SAME', 'data_format': config['data_format'],
                    'activation': tf.nn.relu, 'batch_normalization': True,
                    'training': config['training'],
@@ -39,3 +65,8 @@ def vgg_backbone(inputs, **config):
         x = vgg_block(x, 128, 3, 'conv4_2', **params_conv)
 
     return x
+
+
+# To do by Zhenyu ZHOU
+def resnet_backbone(inputs, **config):
+    return 0

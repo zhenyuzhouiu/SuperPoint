@@ -5,25 +5,40 @@ from .backbones.vgg import vgg_block
 
 
 def detector_head(inputs, **config):
+    """
+
+    Args:
+        inputs:
+        **config:
+
+    Returns:
+        {
+        'logits': x,  [N, 65, H/8, W/8]
+        'prob': prob  [N, H, W] prob = tf.nn.softmax(x, axis=cindex)
+        }
+
+    """
     params_conv = {'padding': 'SAME', 'data_format': config['data_format'],
                    'batch_normalization': True,
                    'training': config['training'],
                    'kernel_reg': config.get('kernel_reg', 0.)}
     cfirst = config['data_format'] == 'channels_first'
-    cindex = 1 if cfirst else -1  # index of the channel
+    cindex = 1 if cfirst else -1  # index of the channel [N, C, H/8, W/8]
 
     with tf.variable_scope('detector', reuse=tf.AUTO_REUSE):
         x = vgg_block(inputs, 256, 3, 'conv1',
                       activation=tf.nn.relu, **params_conv)
+        # grid_size: one pixel of feature maps represent grid size pixels on the input image
         x = vgg_block(x, 1+pow(config['grid_size'], 2), 1, 'conv2',
-                      activation=None, **params_conv)
+                      activation=None, **params_conv)  # [N, 65, H/8, W/8]
 
         prob = tf.nn.softmax(x, axis=cindex)
         # Strip the extra “no interest point” dustbin
         prob = prob[:, :-1, :, :] if cfirst else prob[:, :, :, :-1]
+        # [N, 1, H, W], H*W is the original size of input images
         prob = tf.depth_to_space(
                 prob, config['grid_size'], data_format='NCHW' if cfirst else 'NHWC')
-        prob = tf.squeeze(prob, axis=cindex)
+        prob = tf.squeeze(prob, axis=cindex)  # [N, H, W]
 
     return {'logits': x, 'prob': prob}
 
@@ -51,24 +66,90 @@ def descriptor_head(inputs, **config):
     return {'descriptors_raw': x, 'descriptors': desc}
 
 
+# To do by Zhenyu ZHOU
+def classes_head(inputs, **config):
+    params_conv = {'padding': 'SAME', 'data_format': config['data_format'],
+                   'batch_normalization': True,
+                   'training': config['training'],
+                   'kernel_reg': config.get('kernel_reg', 0.)}
+    cfirst = config['data_format'] == 'channels_first'
+    cindex = 1 if cfirst else -1  # index of the channel [N, C, H/8, W/8]
+
+    with tf.variable_scope('classes', reuse=tf.AUTO_REUSE):
+        x = vgg_block(inputs, 256, 3, 'conv1',
+                      activation=tf.nn.relu, **params_conv)
+        # output_channel: objectiveness, bifurcation, ending
+        x = vgg_block(x, 3*pow(config['grid_size'], 2), 1, 'conv2',
+                      activation=None, **params_conv)  # [N, 192, H/8, W/8]
+
+        # [N, 3, H, W], H*W is the original size of input images
+        cls = tf.depth_to_space(x, config['grid_size'],
+                                data_format='NCHW' if cfirst else 'NHWC')
+        cls = tf.nn.softmax(cls, axis=cindex)
+        cls = cls[:, :-1, :, :] if cfirst else cls[:, :, :, :-1]
+        cls = tf.argmax(cls, axis=cindex)  # [N, H, W]
+
+    return {'classes_raw': x, 'classes': cls}
+
+
+# To do by Zhenyu ZHOU
+def angle_head(inputs, **config):
+    params_conv = {'padding': 'SAME', 'data_format': config['data_format'],
+                   'batch_normalization': True,
+                   'training': config['training'],
+                   'kernel_reg': config.get('kernel_reg', 0.)}
+    cfirst = config['data_format'] == 'channels_first'
+    cindex = 1 if cfirst else -1  # index of the channel [N, C, H/8, W/8]
+
+    with tf.variable_scope('angle', reuse=tf.AUTO_REUSE):
+        x = vgg_block(inputs, 256, 3, 'conv1',
+                      activation=tf.nn.relu, **params_conv)
+        # output_channel: objectiveness, bifurcation, ending
+        x = vgg_block(x, 181 * pow(config['grid_size'], 2), 1, 'conv2',
+                      activation=None, **params_conv)  # [N, 11584, H/8, W/8]
+
+        # [N, 181, H, W], H*W is the original size of input images
+        ang = tf.depth_to_space(x, config['grid_size'],
+                                data_format='NCHW' if cfirst else 'NHWC')
+        ang = tf.nn.softmax(ang, axis=cindex)
+        ang = ang[:, :-1, :, :] if cfirst else ang[:, :, :, :-1]
+        ang = tf.argmax(ang, axis=cindex)  # [N, H, W]
+
+    return {'angle_raw': x, 'angle': ang}
+
+
 def detector_loss(keypoint_map, logits, valid_mask=None, **config):
     # Convert the boolean labels to indices including the "no interest point" dustbin
-    labels = tf.to_float(keypoint_map[..., tf.newaxis])  # for GPU
-    labels = tf.space_to_depth(labels, config['grid_size'])
-    shape = tf.concat([tf.shape(labels)[:3], [1]], axis=0)
-    labels = tf.concat([2*labels, tf.ones(shape)], 3)
+    labels = tf.to_float(keypoint_map[..., tf.newaxis])  # for GPU  [N, H, W, 1]
+    labels = tf.space_to_depth(labels, config['grid_size'])  # [N, H/8, W/8, 64]
+    # tf.shape() return tf.Tensor
+    shape = tf.concat([tf.shape(labels)[:3], [1]], axis=0)  # [N, H/8, W/8, 1]
+    labels = tf.concat([2*labels, tf.ones(shape)], 3)  # [N, H/8/ W/8, 65]
     # Add a small random matrix to randomly break ties in argmax
+    # If two ground truth corner positions land in the same bin,
+    # then we randomly select one ground truth corner location
     labels = tf.argmax(labels + tf.random_uniform(tf.shape(labels), 0, 0.1),
-                       axis=3)
+                       axis=3)  # [N, H/8, W/8] with labels
 
     # Mask the pixels if bordering artifacts appear
     valid_mask = tf.ones_like(keypoint_map) if valid_mask is None else valid_mask
-    valid_mask = tf.to_float(valid_mask[..., tf.newaxis])  # for GPU
-    valid_mask = tf.space_to_depth(valid_mask, config['grid_size'])
-    valid_mask = tf.reduce_prod(valid_mask, axis=3)  # AND along the channel dim
+    valid_mask = tf.to_float(valid_mask[..., tf.newaxis])  # for GPU  # [N, H, W, 1]
+    valid_mask = tf.space_to_depth(valid_mask, config['grid_size'])  # [N, H/8, W/8, 64]
+    # computes tf.math.multiply of elements across dimensions of a tensor
+    valid_mask = tf.reduce_prod(valid_mask, axis=3)  # AND along the channel dim [N, H/8, W/8]
 
     loss = tf.losses.sparse_softmax_cross_entropy(
             labels=labels, logits=logits, weights=valid_mask)
+    return loss
+
+
+def detector_mse_loss(keypoint_map, prob, valid_mask=None, **config):
+    labels = tf.to_float(keypoint_map)  # [N, H, W]
+
+    # Mask the pixels if bordering artifacts appear
+    valid_mask = tf.ones_like(keypoint_map) if valid_mask is None else valid_mask  # [N, H, W]
+
+    loss = tf.losses.mean_pairwise_squared_error(labels=labels, predictions=prob, weights=valid_mask)
     return loss
 
 
@@ -143,6 +224,15 @@ def descriptor_loss(descriptors, warped_descriptors, homographies,
                                                      negative_dist) / normalization)
     loss = tf.reduce_sum(valid_mask * loss) / normalization
     return loss
+
+
+# To do by Zhenyu ZHOU
+def classes_loss(keypoint_map, classes, valid_mask=None, **config):
+    return 0
+
+
+def angle_loss(keypoint_map, angle, valid_mask=None, **config):
+    return 0
 
 
 def spatial_nms(prob, size):

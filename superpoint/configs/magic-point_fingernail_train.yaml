@@ -33,7 +33,7 @@ data:
                 allow_artifacts: true
             valid_border_margin: 3
 model:
-    name: 'magic_point'
+    name: 'fingernail_point'
     batch_size: 43
     eval_batch_size: 43
     learning_rate: 0.001

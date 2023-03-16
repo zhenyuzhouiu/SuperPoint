@@ -79,6 +79,7 @@ def add_keypoint_map(data):
 
     Returns:
         data: {**data, 'keypoint_map': kmap}
+        the h and w of kmap are same as data['image']
 
     """
     with tf.name_scope('add_keypoint_map'):
