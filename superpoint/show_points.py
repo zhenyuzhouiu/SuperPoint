@@ -1,5 +1,5 @@
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = "1"
+os.environ['CUDA_VISIBLE_DEVICES'] = "0"
 import cv2
 import argparse
 import numpy as np
@@ -81,7 +81,7 @@ if __name__ == "__main__":
                         default='../data_dir/fingernail/train', help='the source images path',
                         dest='images_path')
     parser.add_argument('--points_path', type=str,
-                        default='../exper_dir/outputs/magic-point_fingernail_240_320-export1',
+                        default='../exper_dir/outputs/fingernail_point_class_angle_label-240-320',
                         help='the points position path',
                         dest='points_path')
     parser.add_argument('--resize', type=int, default=[240, 320], help='resize the source image to the size [h, w]',

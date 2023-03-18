@@ -90,6 +90,27 @@ def add_keypoint_map(data):
     return {**data, 'keypoint_map': kmap}
 
 
+def add_keypoint_classe_angle_map(data):
+    with tf.name_scope('add_keypoint_map'):
+        image_shape = tf.shape(data['image'])[:2]
+        kp = tf.minimum(tf.to_int32(tf.round(data['keypoints'])), image_shape-1)
+        # tf.scatter_nd initially zero for numeric
+        kmap = tf.scatter_nd(kp, tf.ones([tf.shape(kp)[0]], dtype=tf.int32), image_shape)
+    with tf.name_scope('add_classes_map'):
+        image_shape = tf.shape(data['image'])[:2]
+        kp = tf.minimum(tf.to_int32(tf.round(data['keypoints'])), image_shape-1)
+        # tf.shape(kp)[0] should equal to tf.shape(data['classes'])[0]
+        cmap = tf.scatter_nd(kp, tf.to_int32(tf.squeeze(data['classes'], axis=1)), image_shape)
+    # To do by Zhenyu ZHOU
+    # At present, it cannot support CSL for angular loss
+    with tf.name_scope('add_keypoint_map'):
+        image_shape = tf.shape(data['image'])[:2]
+        kp = tf.minimum(tf.to_int32(tf.round(data['keypoints'])), image_shape-1)
+        amap = tf.scatter_nd(kp, tf.to_int32(tf.squeeze(data['angles'], axis=1)), image_shape)
+
+    return {**data, 'keypoint_map': kmap, 'classes_map': cmap, 'angles_map': amap}
+
+
 def downsample(image, coordinates, **config):
     with tf.name_scope('gaussian_blur'):
         k_size = config['blur_size']

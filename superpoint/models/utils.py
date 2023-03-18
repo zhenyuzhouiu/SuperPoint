@@ -86,7 +86,7 @@ def classes_head(inputs, **config):
         cls = tf.depth_to_space(x, config['grid_size'],
                                 data_format='NCHW' if cfirst else 'NHWC')
         cls = tf.nn.softmax(cls, axis=cindex)
-        cls = cls[:, :-1, :, :] if cfirst else cls[:, :, :, :-1]
+        # cls = cls[:, :-1, :, :] if cfirst else cls[:, :, :, :-1]
         cls = tf.argmax(cls, axis=cindex)  # [N, H, W]
 
     return {'classes_raw': x, 'classes': cls}
@@ -101,7 +101,7 @@ def angle_head(inputs, **config):
     cfirst = config['data_format'] == 'channels_first'
     cindex = 1 if cfirst else -1  # index of the channel [N, C, H/8, W/8]
 
-    with tf.variable_scope('angle', reuse=tf.AUTO_REUSE):
+    with tf.variable_scope('angles', reuse=tf.AUTO_REUSE):
         x = vgg_block(inputs, 256, 3, 'conv1',
                       activation=tf.nn.relu, **params_conv)
         # output_channel: objectiveness, bifurcation, ending
@@ -112,10 +112,10 @@ def angle_head(inputs, **config):
         ang = tf.depth_to_space(x, config['grid_size'],
                                 data_format='NCHW' if cfirst else 'NHWC')
         ang = tf.nn.softmax(ang, axis=cindex)
-        ang = ang[:, :-1, :, :] if cfirst else ang[:, :, :, :-1]
+        # ang = ang[:, :-1, :, :] if cfirst else ang[:, :, :, :-1]
         ang = tf.argmax(ang, axis=cindex)  # [N, H, W]
 
-    return {'angle_raw': x, 'angle': ang}
+    return {'angles_raw': x, 'angles': ang}
 
 
 def detector_loss(keypoint_map, logits, valid_mask=None, **config):
@@ -144,6 +144,7 @@ def detector_loss(keypoint_map, logits, valid_mask=None, **config):
 
 
 def detector_mse_loss(keypoint_map, prob, valid_mask=None, **config):
+
     labels = tf.to_float(keypoint_map)  # [N, H, W]
 
     # Mask the pixels if bordering artifacts appear
@@ -227,12 +228,19 @@ def descriptor_loss(descriptors, warped_descriptors, homographies,
 
 
 # To do by Zhenyu ZHOU
-def classes_loss(keypoint_map, classes, valid_mask=None, **config):
-    return 0
+def classes_loss(classes_map, classes_raw, valid_mask=None, **config):
+    # when calculate loss, the data format with [N, H, W, C]
+    cls = tf.depth_to_space(classes_raw, config['grid_size'], data_format='NHWC')
+    loss = tf.losses.sparse_softmax_cross_entropy(labels=classes_map, logits=cls, weights=valid_mask)
+
+    return loss
 
 
-def angle_loss(keypoint_map, angle, valid_mask=None, **config):
-    return 0
+def angle_loss(angles_map, angle_raw, valid_mask=None, **config):
+    ang = tf.depth_to_space(angle_raw, config['grid_size'], data_format='NHWC')
+    loss = tf.losses.sparse_softmax_cross_entropy(labels=angles_map, logits=ang, weights=valid_mask)
+
+    return loss
 
 
 def spatial_nms(prob, size):
