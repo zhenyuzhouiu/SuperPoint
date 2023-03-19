@@ -66,58 +66,6 @@ def descriptor_head(inputs, **config):
     return {'descriptors_raw': x, 'descriptors': desc}
 
 
-# To do by Zhenyu ZHOU
-def classes_head(inputs, **config):
-    params_conv = {'padding': 'SAME', 'data_format': config['data_format'],
-                   'batch_normalization': True,
-                   'training': config['training'],
-                   'kernel_reg': config.get('kernel_reg', 0.)}
-    cfirst = config['data_format'] == 'channels_first'
-    cindex = 1 if cfirst else -1  # index of the channel [N, C, H/8, W/8]
-
-    with tf.variable_scope('classes', reuse=tf.AUTO_REUSE):
-        x = vgg_block(inputs, 256, 3, 'conv1',
-                      activation=tf.nn.relu, **params_conv)
-        # output_channel: objectiveness, bifurcation, ending
-        x = vgg_block(x, 3*pow(config['grid_size'], 2), 1, 'conv2',
-                      activation=None, **params_conv)  # [N, 192, H/8, W/8]
-
-        # [N, 3, H, W], H*W is the original size of input images
-        cls = tf.depth_to_space(x, config['grid_size'],
-                                data_format='NCHW' if cfirst else 'NHWC')
-        cls = tf.nn.softmax(cls, axis=cindex)
-        # cls = cls[:, :-1, :, :] if cfirst else cls[:, :, :, :-1]
-        cls = tf.argmax(cls, axis=cindex)  # [N, H, W]
-
-    return {'classes_raw': x, 'classes': cls}
-
-
-# To do by Zhenyu ZHOU
-def angle_head(inputs, **config):
-    params_conv = {'padding': 'SAME', 'data_format': config['data_format'],
-                   'batch_normalization': True,
-                   'training': config['training'],
-                   'kernel_reg': config.get('kernel_reg', 0.)}
-    cfirst = config['data_format'] == 'channels_first'
-    cindex = 1 if cfirst else -1  # index of the channel [N, C, H/8, W/8]
-
-    with tf.variable_scope('angles', reuse=tf.AUTO_REUSE):
-        x = vgg_block(inputs, 256, 3, 'conv1',
-                      activation=tf.nn.relu, **params_conv)
-        # output_channel: objectiveness, bifurcation, ending
-        x = vgg_block(x, 181 * pow(config['grid_size'], 2), 1, 'conv2',
-                      activation=None, **params_conv)  # [N, 11584, H/8, W/8]
-
-        # [N, 181, H, W], H*W is the original size of input images
-        ang = tf.depth_to_space(x, config['grid_size'],
-                                data_format='NCHW' if cfirst else 'NHWC')
-        ang = tf.nn.softmax(ang, axis=cindex)
-        # ang = ang[:, :-1, :, :] if cfirst else ang[:, :, :, :-1]
-        ang = tf.argmax(ang, axis=cindex)  # [N, H, W]
-
-    return {'angles_raw': x, 'angles': ang}
-
-
 def detector_loss(keypoint_map, logits, valid_mask=None, **config):
     # Convert the boolean labels to indices including the "no interest point" dustbin
     labels = tf.to_float(keypoint_map[..., tf.newaxis])  # for GPU  [N, H, W, 1]
@@ -154,8 +102,7 @@ def detector_mse_loss(keypoint_map, prob, valid_mask=None, **config):
     return loss
 
 
-def descriptor_loss(descriptors, warped_descriptors, homographies,
-                    valid_mask=None, **config):
+def descriptor_loss(descriptors, warped_descriptors, homographies, valid_mask=None, **config):
     # Compute the position of the center pixel of every cell in the image
     (batch_size, Hc, Wc) = tf.unstack(tf.to_int32(tf.shape(descriptors)[:3]))
     coord_cells = tf.stack(tf.meshgrid(
@@ -227,22 +174,6 @@ def descriptor_loss(descriptors, warped_descriptors, homographies,
     return loss
 
 
-# To do by Zhenyu ZHOU
-def classes_loss(classes_map, classes_raw, valid_mask=None, **config):
-    # when calculate loss, the data format with [N, H, W, C]
-    cls = tf.depth_to_space(classes_raw, config['grid_size'], data_format='NHWC')
-    loss = tf.losses.sparse_softmax_cross_entropy(labels=classes_map, logits=cls, weights=valid_mask)
-
-    return loss
-
-
-def angle_loss(angles_map, angle_raw, valid_mask=None, **config):
-    ang = tf.depth_to_space(angle_raw, config['grid_size'], data_format='NHWC')
-    loss = tf.losses.sparse_softmax_cross_entropy(labels=angles_map, logits=ang, weights=valid_mask)
-
-    return loss
-
-
 def spatial_nms(prob, size):
     """Performs non maximum suppression on the heatmap using max-pooling. This method is
     faster than box_nms, but does not suppress contiguous that have the same probability
@@ -289,3 +220,62 @@ def box_nms(prob, size, iou=0.1, min_prob=0.01, keep_top_k=0):
             pts = tf.gather(pts, indices)
         prob = tf.scatter_nd(tf.to_int32(pts), scores, tf.shape(prob))
     return prob
+
+
+def points_head(inputs, **config):
+
+    return 0
+
+
+def classes_head(inputs, **config):
+    params_conv = {'padding': 'SAME', 'data_format': config['data_format'],
+                   'batch_normalization': True,
+                   'training': config['training'],
+                   'kernel_reg': config.get('kernel_reg', 0.)}
+    cfirst = config['data_format'] == 'channels_first'
+    cindex = 1 if cfirst else -1  # index of the channel [N, C, H/8, W/8]
+
+    with tf.variable_scope('classes', reuse=tf.AUTO_REUSE):
+        x = vgg_block(inputs, 256, 3, 'conv1',
+                      activation=tf.nn.relu, **params_conv)
+        # output_channel: objectiveness, bifurcation, ending
+        x = vgg_block(x, 3*pow(config['grid_size'], 2), 1, 'conv2',
+                      activation=None, **params_conv)  # [N, 192, H/8, W/8]
+
+        # [N, 3, H, W], H*W is the original size of input images
+        cls = tf.depth_to_space(x, config['grid_size'],
+                                data_format='NCHW' if cfirst else 'NHWC')
+        cls = tf.nn.softmax(cls, axis=cindex)
+        # cls = cls[:, :-1, :, :] if cfirst else cls[:, :, :, :-1]
+        cls = tf.argmax(cls, axis=cindex)  # [N, H, W]
+
+    return {'classes_raw': x, 'classes': cls}
+
+
+def angle_head(inputs, **config):
+    params_conv = {'padding': 'SAME', 'data_format': config['data_format'],
+                   'batch_normalization': True,
+                   'training': config['training'],
+                   'kernel_reg': config.get('kernel_reg', 0.)}
+    cfirst = config['data_format'] == 'channels_first'
+    cindex = 1 if cfirst else -1  # index of the channel [N, C, H/8, W/8]
+
+    with tf.variable_scope('angles', reuse=tf.AUTO_REUSE):
+        x = vgg_block(inputs, 256, 3, 'conv1',
+                      activation=tf.nn.relu, **params_conv)
+        # output_channel: objectiveness, bifurcation, ending
+        x = vgg_block(x, 181 * pow(config['grid_size'], 2), 1, 'conv2',
+                      activation=None, **params_conv)  # [N, 11584, H/8, W/8]
+
+        # [N, 181, H, W], H*W is the original size of input images
+        ang = tf.depth_to_space(x, config['grid_size'],
+                                data_format='NCHW' if cfirst else 'NHWC')
+        ang = tf.nn.softmax(ang, axis=cindex)
+        # ang = ang[:, :-1, :, :] if cfirst else ang[:, :, :, :-1]
+        ang = tf.argmax(ang, axis=cindex)  # [N, H, W]
+
+    return {'angles_raw': x, 'angles': ang}
+
+
+def minutiae_loss():
+    return 0

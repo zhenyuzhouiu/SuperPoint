@@ -63,7 +63,7 @@ class FingernailMinutiae(BaseModel):
                                     valid_mask=inputs['keypoint_map'], **config)
         loss_angle = angle_loss(inputs['angles_map'], outputs['angles_raw'],
                                 valid_mask=inputs['keypoint_map'], **config)
-        loss = loss_points + loss_classes + loss_angle
+        loss = loss_points + 0 * loss_classes + 0 * loss_angle
         return loss
 
     def _metrics(self, outputs, inputs, **config):

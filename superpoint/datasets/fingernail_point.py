@@ -7,7 +7,7 @@ from .utils import pipeline
 from superpoint.settings import DATA_PATH, EXPER_PATH
 
 
-class Fingernail(BaseDataset):
+class FingernailPoint(BaseDataset):
     default_config = {
         'labels': None,
         'cache_in_memory': False,
