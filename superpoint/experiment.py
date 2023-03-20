@@ -15,7 +15,7 @@ logging.basicConfig(format='[%(asctime)s %(levelname)s] %(message)s',
                     datefmt='%m/%d/%Y %H:%M:%S', level=logging.INFO)
 import tensorflow as tf  # noqa: E402
 
-os.environ['CUDA_VISIBLE_DEVICES'] = "1"
+os.environ['CUDA_VISIBLE_DEVICES'] = "0"
 
 
 def train(config, n_iter, output_dir, pretrained_dir=None,
@@ -130,47 +130,29 @@ def _cli_pred(config, args):
 if __name__ == '__main__':
 
     # =========================== for subparsers
-    parser = argparse.ArgumentParser()
-    subparsers = parser.add_subparsers(dest='command')
-
-    # Training command
-    p_train = subparsers.add_parser('train')
-    p_train.add_argument('config', type=str)
-    p_train.add_argument('exper_name', type=str)
-    p_train.add_argument('--eval', action='store_true')
-    p_train.add_argument('--pretrained_model', type=str, default=None)
-    p_train.set_defaults(func=_cli_train)
-
-    # Evaluation command
-    p_train = subparsers.add_parser('evaluate')
-    p_train.add_argument('config', type=str)
-    p_train.add_argument('exper_name', type=str)
-    p_train.set_defaults(func=_cli_eval)
-
-    # Inference command
-    p_train = subparsers.add_parser('predict')
-    p_train.add_argument('config', type=str)
-    p_train.add_argument('exper_name', type=str)
-    p_train.set_defaults(func=_cli_pred)
-
-    args = parser.parse_args()
-
-    with open(args.config, 'r') as f:
-        config = yaml.load(f)
-    output_dir = os.path.join(EXPER_PATH, args.exper_name)
-    if not os.path.exists(output_dir):
-        os.mkdir(output_dir)
-
-    with capture_outputs(os.path.join(output_dir, 'log')):
-        logging.info('Running command {}'.format(args.command.upper()))
-        args.func(config, output_dir, args)
-
-    # ========================= not use subparsers
     # parser = argparse.ArgumentParser()
-    # parser.add_argument('config', type=str, default='configs/magic-point_fingernail_train.yaml')
-    # parser.add_argument('exper_name', type=str, default='magic-point_fingernail_tmp')
-    # parser.add_argument('--eval', action='store_true')
-    # parser.add_argument('--pretrained_mode', type=str, default=None)
+    # subparsers = parser.add_subparsers(dest='command')
+    #
+    # # Training command
+    # p_train = subparsers.add_parser('train')
+    # p_train.add_argument('config', type=str)
+    # p_train.add_argument('exper_name', type=str)
+    # p_train.add_argument('--eval', action='store_true')
+    # p_train.add_argument('--pretrained_model', type=str, default=None)
+    # p_train.set_defaults(func=_cli_train)
+    #
+    # # Evaluation command
+    # p_train = subparsers.add_parser('evaluate')
+    # p_train.add_argument('config', type=str)
+    # p_train.add_argument('exper_name', type=str)
+    # p_train.set_defaults(func=_cli_eval)
+    #
+    # # Inference command
+    # p_train = subparsers.add_parser('predict')
+    # p_train.add_argument('config', type=str)
+    # p_train.add_argument('exper_name', type=str)
+    # p_train.set_defaults(func=_cli_pred)
+    #
     # args = parser.parse_args()
     #
     # with open(args.config, 'r') as f:
@@ -181,7 +163,25 @@ if __name__ == '__main__':
     #
     # with capture_outputs(os.path.join(output_dir, 'log')):
     #     logging.info('Running command {}'.format(args.command.upper()))
-    #     _cli_train(config, output_dir, args)
+    #     args.func(config, output_dir, args)
+
+    # ========================= not use subparsers
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--config', type=str, default='configs/fingernail-minutiae_train.yaml', dest='config')
+    parser.add_argument('--exper_name', type=str, default='fingernail-minutiae_fingernail_tmp', dest='exper_name')
+    parser.add_argument('--eval', action='store_true', required=False)
+    parser.add_argument('--pretrained_model', type=str, default=None, dest='pretrained_model')
+    args = parser.parse_args()
+
+    with open(args.config, 'r') as f:
+        config = yaml.load(f)
+    output_dir = os.path.join(EXPER_PATH, args.exper_name)
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
+
+    with capture_outputs(os.path.join(output_dir, 'log')):
+        logging.info('Running command {}'.format('Train'))
+        _cli_train(config, output_dir, args)
 
 
 

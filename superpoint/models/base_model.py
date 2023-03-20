@@ -5,6 +5,7 @@ import numpy as np
 from tqdm import tqdm
 import os.path as osp
 import itertools
+from tensorflow.python import debug as tfdbg
 
 from superpoint.utils.tools import dict_update
 
@@ -301,6 +302,7 @@ class BaseModel(metaclass=ABCMeta):
                                      allow_soft_placement=True)
         sess_config.gpu_options.allow_growth = True
         self.sess = tf.Session(config=sess_config)
+        self.sess = tfdbg.LocalCLIDebugWrapperSession(self.sess, ui_type="readline")
 
         # Register tf dataset handles
         if self.datasets:
@@ -337,6 +339,10 @@ class BaseModel(metaclass=ABCMeta):
                     [self.loss, self.summaries, self.trainer],
                     feed_dict={self.handle: self.dataset_handles['training']},
                     options=options, run_metadata=run_metadata)
+
+            # loss, summaries, _ = self.sess.run(
+            #     [self.loss, self.summaries, self.trainer],
+            #     feed_dict={self.handle: self.dataset_handles['training']})
 
             if save_interval and checkpoint_path and (i+1) % save_interval == 0:
                 self.save(checkpoint_path)

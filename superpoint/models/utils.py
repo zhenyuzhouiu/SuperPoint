@@ -277,5 +277,53 @@ def angle_head(inputs, **config):
     return {'angles_raw': x, 'angles': ang}
 
 
-def minutiae_loss():
-    return 0
+def minutiae_head(inputs, **config):
+    params_conv = {'padding': 'SAME', 'data_format': config['data_format'],
+                   'batch_normalization': True,
+                   'training': config['training'],
+                   'kernel_reg': config.get('kernel_reg', 0.)}
+    cfirst = config['data_format'] == 'channels_first'
+    cindex = 1 if cfirst else -1  # index of the channel [N, C, H/8, W/8]
+
+    with tf.variable_scope('detector', reuse=tf.AUTO_REUSE):
+        x = vgg_block(inputs, 256, 3, 'conv1',
+                      activation=tf.nn.relu, **params_conv)
+        # grid_size: one pixel of feature maps represent grid size pixels on the input image
+        x = vgg_block(x, 5 * pow(config['grid_size'], 2), 3, 'conv2',
+                      activation=None, **params_conv)  # [N, 256, H/8, W/8]
+
+        shuffle_x = tf.depth_to_space(x, config['grid_size'], data_format='NCHW' if cfirst else 'NHWC')
+
+        prob = shuffle_x[:, 0, :, :] if cfirst else shuffle_x[:, :, :, 0]
+        # prob = tf.squeeze(prob, axis=cindex)
+        prob = tf.sigmoid(prob)
+        c_prob = shuffle_x[:, 1:4, :, :] if cfirst else shuffle_x[:, :, :, 1:4]
+        # c_prob = tf.sigmoid(c_prob)
+        a_prob = shuffle_x[:, 4, :, :] if cfirst else shuffle_x[:, :, :, 4]
+        # a_prob = tf.squeeze(a_prob, axis=cindex)  # [N, H, W]
+        a_prob = tf.nn.relu(a_prob)
+
+    return {'minutiae_raw': x, 'prob': prob, 'c_prob': c_prob, 'a_prob': a_prob}
+
+
+def minutiae_loss(outputs, inputs, **config):
+    valid_mask = tf.to_float(inputs['valid_mask'])
+    # ====== keypoint loss
+    keypoint_map = tf.to_int32(inputs['keypoint_map'])  # [N, H, W]
+    prob = outputs['prob']  # [N, H, W]
+    p_loss = tf.losses.log_loss(labels=keypoint_map, predictions=prob, weights=valid_mask)
+
+    # ====== classes loss
+    classes_map = tf.to_int32(inputs['classes_map'])  # [N, H, W]
+    c_prob = outputs['c_prob']  # [N, H, W, 3]
+    print(classes_map)
+    print(c_prob)
+    c_loss = tf.losses.sparse_softmax_cross_entropy(labels=classes_map, logits=c_prob, weights=valid_mask*0.01)
+    # ====== angles loss
+    angles_map = tf.to_int32(inputs['angles_map'])
+    a_prob = outputs['a_prob']
+    a_loss = tf.losses.mean_squared_error(labels=angles_map, predictions=a_prob, weights=valid_mask)
+
+    loss = config['p_loss']*p_loss + config['c_loss']*c_loss + config['a_loss']*a_loss
+    # loss = p_loss
+    return loss

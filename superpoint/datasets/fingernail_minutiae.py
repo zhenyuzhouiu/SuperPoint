@@ -102,13 +102,16 @@ class FingernailMinutiae(BaseDataset):
         # Python function
         # Get the ground truth points
         def _read_points(filename):
-            return np.load(filename.decode('utf-8'))['points'].astype(np.float32)
+            p_array = np.load(filename.decode('utf-8'))['points'].astype(np.float32)
+            return p_array
 
         def _read_classes(filename):
-            return np.load(filename.decode('utf-8'))['classes'].astype(np.float32)
+            c_array = np.load(filename.decode('utf-8'))['classes'].astype(np.float32)
+            return c_array
 
         def _read_angles(filename):
-            return np.load(filename.decode('utf-8'))['angles'].astype(np.float32)
+            a_array = np.load(filename.decode('utf-8'))['angles'].astype(np.float32)
+            return a_array
 
         def _read_labels(filename):
             """
