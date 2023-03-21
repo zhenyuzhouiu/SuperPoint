@@ -302,7 +302,7 @@ class BaseModel(metaclass=ABCMeta):
                                      allow_soft_placement=True)
         sess_config.gpu_options.allow_growth = True
         self.sess = tf.Session(config=sess_config)
-        self.sess = tfdbg.LocalCLIDebugWrapperSession(self.sess, ui_type="readline")
+        # self.sess = tfdbg.LocalCLIDebugWrapperSession(self.sess, ui_type="readline")
 
         # Register tf dataset handles
         if self.datasets:

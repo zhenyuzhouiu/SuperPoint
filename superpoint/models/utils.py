@@ -318,11 +318,11 @@ def minutiae_loss(outputs, inputs, **config):
     c_prob = outputs['c_prob']  # [N, H, W, 3]
     print(classes_map)
     print(c_prob)
-    c_loss = tf.losses.sparse_softmax_cross_entropy(labels=classes_map, logits=c_prob, weights=valid_mask*0.01)
+    c_loss = tf.losses.sparse_softmax_cross_entropy(labels=classes_map, logits=c_prob, weights=keypoint_map)
     # ====== angles loss
     angles_map = tf.to_int32(inputs['angles_map'])
     a_prob = outputs['a_prob']
-    a_loss = tf.losses.mean_squared_error(labels=angles_map, predictions=a_prob, weights=valid_mask)
+    a_loss = tf.losses.mean_squared_error(labels=angles_map, predictions=a_prob, weights=keypoint_map)
 
     loss = config['p_loss']*p_loss + config['c_loss']*c_loss + config['a_loss']*a_loss
     # loss = p_loss

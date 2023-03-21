@@ -112,7 +112,7 @@ class BaseDataset(metaclass=ABCMeta):
                 self.tf_next[n] = self.tf_splits[n].make_one_shot_iterator().get_next()
         self.end_set = tf.errors.OutOfRangeError
         self.sess = tf.Session()
-        self.sess = tfdbg.LocalCLIDebugWrapperSession(self.sess, ui_type="readline")
+        # self.sess = tfdbg.LocalCLIDebugWrapperSession(self.sess, ui_type="readline")
 
     def _get_set_generator(self, set_name):
         while True:

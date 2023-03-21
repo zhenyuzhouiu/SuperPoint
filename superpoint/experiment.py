@@ -130,47 +130,29 @@ def _cli_pred(config, args):
 if __name__ == '__main__':
 
     # =========================== for subparsers
-    # parser = argparse.ArgumentParser()
-    # subparsers = parser.add_subparsers(dest='command')
-    #
-    # # Training command
-    # p_train = subparsers.add_parser('train')
-    # p_train.add_argument('config', type=str)
-    # p_train.add_argument('exper_name', type=str)
-    # p_train.add_argument('--eval', action='store_true')
-    # p_train.add_argument('--pretrained_model', type=str, default=None)
-    # p_train.set_defaults(func=_cli_train)
-    #
-    # # Evaluation command
-    # p_train = subparsers.add_parser('evaluate')
-    # p_train.add_argument('config', type=str)
-    # p_train.add_argument('exper_name', type=str)
-    # p_train.set_defaults(func=_cli_eval)
-    #
-    # # Inference command
-    # p_train = subparsers.add_parser('predict')
-    # p_train.add_argument('config', type=str)
-    # p_train.add_argument('exper_name', type=str)
-    # p_train.set_defaults(func=_cli_pred)
-    #
-    # args = parser.parse_args()
-    #
-    # with open(args.config, 'r') as f:
-    #     config = yaml.load(f)
-    # output_dir = os.path.join(EXPER_PATH, args.exper_name)
-    # if not os.path.exists(output_dir):
-    #     os.mkdir(output_dir)
-    #
-    # with capture_outputs(os.path.join(output_dir, 'log')):
-    #     logging.info('Running command {}'.format(args.command.upper()))
-    #     args.func(config, output_dir, args)
-
-    # ========================= not use subparsers
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config', type=str, default='configs/fingernail-minutiae_train.yaml', dest='config')
-    parser.add_argument('--exper_name', type=str, default='fingernail-minutiae_fingernail_tmp', dest='exper_name')
-    parser.add_argument('--eval', action='store_true', required=False)
-    parser.add_argument('--pretrained_model', type=str, default=None, dest='pretrained_model')
+    subparsers = parser.add_subparsers(dest='command')
+
+    # Training command
+    p_train = subparsers.add_parser('train')
+    p_train.add_argument('config', type=str)
+    p_train.add_argument('exper_name', type=str)
+    p_train.add_argument('--eval', action='store_true')
+    p_train.add_argument('--pretrained_model', type=str, default=None)
+    p_train.set_defaults(func=_cli_train)
+
+    # Evaluation command
+    p_train = subparsers.add_parser('evaluate')
+    p_train.add_argument('config', type=str)
+    p_train.add_argument('exper_name', type=str)
+    p_train.set_defaults(func=_cli_eval)
+
+    # Inference command
+    p_train = subparsers.add_parser('predict')
+    p_train.add_argument('config', type=str)
+    p_train.add_argument('exper_name', type=str)
+    p_train.set_defaults(func=_cli_pred)
+
     args = parser.parse_args()
 
     with open(args.config, 'r') as f:
@@ -180,8 +162,26 @@ if __name__ == '__main__':
         os.mkdir(output_dir)
 
     with capture_outputs(os.path.join(output_dir, 'log')):
-        logging.info('Running command {}'.format('Train'))
-        _cli_train(config, output_dir, args)
+        logging.info('Running command {}'.format(args.command.upper()))
+        args.func(config, output_dir, args)
+
+    # ========================= not use subparsers
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument('--config', type=str, default='configs/fingernail-minutiae_train.yaml', dest='config')
+    # parser.add_argument('--exper_name', type=str, default='fingernail-minutiae_fingernail_tmp', dest='exper_name')
+    # parser.add_argument('--eval', action='store_true', required=False)
+    # parser.add_argument('--pretrained_model', type=str, default=None, dest='pretrained_model')
+    # args = parser.parse_args()
+    #
+    # with open(args.config, 'r') as f:
+    #     config = yaml.load(f)
+    # output_dir = os.path.join(EXPER_PATH, args.exper_name)
+    # if not os.path.exists(output_dir):
+    #     os.mkdir(output_dir)
+    #
+    # with capture_outputs(os.path.join(output_dir, 'log')):
+    #     logging.info('Running command {}'.format('Train'))
+    #     _cli_train(config, output_dir, args)
 
 
 
