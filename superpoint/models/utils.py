@@ -223,8 +223,36 @@ def box_nms(prob, size, iou=0.1, min_prob=0.01, keep_top_k=0):
 
 
 def points_head(inputs, **config):
+    params_conv = {'padding': 'SAME', 'data_format': config['data_format'],
+                   'batch_normalization': True,
+                   'training': config['training'],
+                   'kernel_reg': config.get('kernel_reg', 0.)}
+    cfirst = config['data_format'] == 'channels_first'
+    cindex = 1 if cfirst else -1  # index of the channel [N, C, H/8, W/8]
 
-    return 0
+    with tf.variable_scope('detector', reuse=tf.AUTO_REUSE):
+        x = vgg_block(inputs, 256, 3, 'conv1',
+                      activation=tf.nn.relu, **params_conv)
+        # grid_size: one pixel of feature maps represent grid size pixels on the input image
+        x = vgg_block(x, pow(config['grid_size'], 2), 3, 'conv2',
+                      activation=None, **params_conv)  # [N, 65, H/8, W/8]
+
+        # [N, 1, H, W], H*W is the original size of input images
+        prob = tf.depth_to_space(
+                x, config['grid_size'], data_format='NCHW' if cfirst else 'NHWC')
+        prob = tf.nn.sigmoid(prob, axis=cindex)
+        prob = tf.squeeze(prob, axis=cindex)  # [N, H, W]
+
+    return {'logits': x, 'prob': prob}
+
+
+def points_loss(keypoint_map, logits, valid_mask=None, **config):
+    logits = tf.depth_to_space(logits, config['grid_size'], data_format='NHWC')  # [N, H, W, 1]
+    logits = tf.nn.sigmoid(logits)
+    if logits.shape.ndims == 4:
+        logits = tf.squeeze(logits, axis=-1)
+    loss = tf.losses.log_loss(labels=keypoint_map, predictions=logits, weights=valid_mask)
+    return loss
 
 
 def classes_head(inputs, **config):
@@ -239,7 +267,7 @@ def classes_head(inputs, **config):
         x = vgg_block(inputs, 256, 3, 'conv1',
                       activation=tf.nn.relu, **params_conv)
         # output_channel: objectiveness, bifurcation, ending
-        x = vgg_block(x, 3*pow(config['grid_size'], 2), 1, 'conv2',
+        x = vgg_block(x, 3*pow(config['grid_size'], 2), 3, 'conv2',
                       activation=None, **params_conv)  # [N, 192, H/8, W/8]
 
         # [N, 3, H, W], H*W is the original size of input images
@@ -250,6 +278,12 @@ def classes_head(inputs, **config):
         cls = tf.argmax(cls, axis=cindex)  # [N, H, W]
 
     return {'classes_raw': x, 'classes': cls}
+
+
+def classes_loss(classes_map, classes_raw, valid_maks=None, **config):
+    logits = tf.depth_to_space(classes_raw, config['grid_size'], data_format='NHWC')
+    loss = tf.losses.sparse_softmax_cross_entropy(labels=classes_map, logits=logits, weights=valid_maks)
+    return loss
 
 
 def angle_head(inputs, **config):
@@ -264,17 +298,25 @@ def angle_head(inputs, **config):
         x = vgg_block(inputs, 256, 3, 'conv1',
                       activation=tf.nn.relu, **params_conv)
         # output_channel: objectiveness, bifurcation, ending
-        x = vgg_block(x, 181 * pow(config['grid_size'], 2), 1, 'conv2',
-                      activation=None, **params_conv)  # [N, 11584, H/8, W/8]
+        x = vgg_block(x, pow(config['grid_size'], 2), 3, 'conv2',
+                      activation=None, **params_conv)  # [N, 64, H/8, W/8]
 
-        # [N, 181, H, W], H*W is the original size of input images
+        # [N, 1, H, W], H*W is the original size of input images
         ang = tf.depth_to_space(x, config['grid_size'],
                                 data_format='NCHW' if cfirst else 'NHWC')
-        ang = tf.nn.softmax(ang, axis=cindex)
-        # ang = ang[:, :-1, :, :] if cfirst else ang[:, :, :, :-1]
-        ang = tf.argmax(ang, axis=cindex)  # [N, H, W]
+        ang = tf.nn.relu(ang, axis=cindex)
+        ang = tf.squeeze(ang, axis=cindex)
 
     return {'angles_raw': x, 'angles': ang}
+
+
+def angles_loss(angles_map, angle_raw, valid_maks=None, **config):
+    logits = tf.depth_to_space(angle_raw, config['grid_size'],data_format='NHWC')
+    logits = tf.nn.relu(logits, axis=-1)
+    if logits.shape.ndims == 4:
+        logits = tf.squeeze(logits, axis=-1)
+    loss = tf.losses.mean_squared_error(labels=angles_map, predictions=logits, weights=valid_maks)
+    return loss
 
 
 def minutiae_head(inputs, **config):
