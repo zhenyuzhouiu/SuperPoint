@@ -169,6 +169,8 @@ class BaseModel(metaclass=ABCMeta):
                     worker_device=worker, ps_device='/cpu:0', ps_tasks=1)
             with tf.name_scope('{}_tower{}'.format(mode, i)) as scope:
                 with tf.device(device_setter):
+                    # net_outputs with [N, H, W, C] or [N, C, H, W]
+                    # {**output_p, **output_c, **output_a}
                     net_outputs = self._model(shards[i], mode, **self.config)
                     if mode == Mode.TRAIN:
                         loss = self._loss(net_outputs, shards[i], **self.config)
@@ -194,9 +196,10 @@ class BaseModel(metaclass=ABCMeta):
             return tower_metrics
         else:
             # Interleave the predictions of the towers
-            return {k: tf.stack(
-                [v for z in zip(*[tf.unstack(p[k], num=batch_size) for p in tower_preds])
-                 for v in z]) for k in tower_preds[0]}
+            # first step: get the output dictionary keys
+            #
+            return {k: tf.stack([v for z in zip(*[tf.unstack(p[k], num=batch_size) for p in tower_preds]) for v in z])
+                    for k in tower_preds[0]}
 
     def _train_graph(self, data):
         # tower_gradvars = zip(grad, model_params)
@@ -236,6 +239,7 @@ class BaseModel(metaclass=ABCMeta):
 
     def _pred_graph(self, data):
         pred_out = self._gpu_tower(data, Mode.PRED, self.config['pred_batch_size'])
+        # self.pred_out is a dictionary
         self.pred_out = {n: tf.identity(p, name=n) for n, p in pred_out.items()}
 
     def _build_graph(self):
@@ -368,9 +372,11 @@ class BaseModel(metaclass=ABCMeta):
         tf.logging.info('Training finished')
 
     def predict(self, data, keys='pred', batch=False):
+        # the elements on set sequence cannot be duplicate
         assert set(data.keys()) >= set(self.input_spec.keys())
         if isinstance(keys, str):
             if keys == '*':
+                # self.pred_out is defined on the _pred_graph()
                 op = self.pred_out  # just gather all outputs
             else:
                 op = self.pred_out[keys]
@@ -378,7 +384,8 @@ class BaseModel(metaclass=ABCMeta):
             op = {k: self.pred_out[k] for k in keys}
         if not batch:  # add batch dimension
             data = {d: [v] for d, v in data.items()}
-        feed = {self.pred_in[i]: data[i] for i in self.input_spec}
+        feed = {self.pred_in[i]: data[i] for i in self.input_spec}  # self.input_spec only contains image key
+        # use the sess.run() to get the output value
         pred = self.sess.run(op, feed_dict=feed)
         if not batch:  # remove batch dimension
             if isinstance(pred, dict):

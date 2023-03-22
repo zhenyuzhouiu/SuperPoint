@@ -78,10 +78,10 @@ def show_file(images_path, points_path, resize=[1080, 1920]):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--images_path', type=str,
-                        default='../data_dir/fingernail/train', help='the source images path',
+                        default='../data_dir/COCO/train2014', help='the source images path',
                         dest='images_path')
     parser.add_argument('--points_path', type=str,
-                        default='../exper_dir/outputs/fingernail_point_fingernail_export1',
+                        default='../exper_dir/outputs/magic-point_coco-export1',
                         help='the points position path',
                         dest='points_path')
     parser.add_argument('--resize', type=int, default=[240, 320], help='resize the source image to the size [h, w]',

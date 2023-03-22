@@ -6,3 +6,4 @@ data_dir/
 exper_dir/
 .idea/
 pretrained_models/sp_v6/
+superpoint.egg-info/

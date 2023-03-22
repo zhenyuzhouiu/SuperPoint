@@ -3,8 +3,8 @@ import cv2 as cv
 import numpy as np
 
 from superpoint.datasets.utils import photometric_augmentation as photaug
-from superpoint.models.homographies import (sample_homography, compute_valid_mask,
-                                            warp_points, filter_points)
+from superpoint.models.homographies import (sample_homography, compute_valid_mask, warp_points,
+                                            filter_points, warp_points_angles, filter_points_classes_angles)
 
 
 def parse_primitives(names, all_primitives):
@@ -56,6 +56,30 @@ def homographic_augmentation(data, add_homography=False, **config):
     return ret
 
 
+def homographic_augmentation_minutiae(data, add_homography=False, **config):
+    with tf.name_scope('homographic_augmentation'):
+        image_shape = tf.shape(data['image'])[:2]
+        homography = sample_homography(image_shape, **config['params'])[0]
+        warped_image = tf.contrib.image.transform(
+                data['image'], homography, interpolation='BILINEAR')
+        valid_mask = compute_valid_mask(image_shape, homography,
+                                        config['valid_border_margin'])
+        warped_points, warped_a_points, warped_angles = warp_points_angles(data['keypoints'], data['a_points'],
+                                                                           homography)
+        warped_points, warped_a_points, warped_classes, warped_angles = filter_points_classes_angles(warped_points,
+                                                                                                     warped_a_points,
+                                                                                                     data['classes'],
+                                                                                                     warped_angles,
+                                                                                                     image_shape)
+
+    ret = {**data, 'image': warped_image, 'keypoints': warped_points, 'a_points': warped_a_points,
+           'classes': warped_classes, 'angles': warped_angles, 'valid_mask': valid_mask}
+    if add_homography:
+        ret['homography'] = homography
+    return ret
+
+
+
 def add_dummy_valid_mask(data):
     """
     Add valid_mask which is a matrix with ones, and the valid_mask has the same shape of data['image']
@@ -95,20 +119,21 @@ def add_keypoint_classe_angle_map(data):
         image_shape = tf.shape(data['image'])[:2]
         kp = tf.minimum(tf.to_int32(tf.round(data['keypoints'])), image_shape-1)
         # tf.scatter_nd initially zero for numeric
+        # tf.scatter_nd indices with (r, c) or (h, w)
         kmap = tf.scatter_nd(kp, tf.ones([tf.shape(kp)[0]], dtype=tf.int32), image_shape)
         kmap = tf.clip_by_value(kmap, 0, 1)
     with tf.name_scope('add_classes_map'):
         image_shape = tf.shape(data['image'])[:2]
         kp = tf.minimum(tf.to_int32(tf.round(data['keypoints'])), image_shape-1)
         # tf.shape(kp)[0] should equal to tf.shape(data['classes'])[0]
-        cmap = tf.scatter_nd(kp, tf.to_int32(tf.squeeze(data['classes'], axis=1)), image_shape)
+        cmap = tf.scatter_nd(kp, tf.to_int32(tf.squeeze(data['classes'], axis=-1)), image_shape)
         cmap = tf.clip_by_value(cmap, 0, 2)
     # To do by Zhenyu ZHOU
     # At present, it cannot support CSL for angular loss
     with tf.name_scope('add_keypoint_map'):
         image_shape = tf.shape(data['image'])[:2]
         kp = tf.minimum(tf.to_int32(tf.round(data['keypoints'])), image_shape-1)
-        amap = tf.scatter_nd(kp, tf.to_int32(tf.squeeze(data['angles'], axis=1)), image_shape)
+        amap = tf.scatter_nd(kp, tf.to_int32(tf.squeeze(data['angles'], axis=-1)), image_shape)
         amap = tf.clip_by_value(amap, 0, 179)
 
     return {**data, 'keypoint_map': kmap, 'classes_map': cmap, 'angles_map': amap}

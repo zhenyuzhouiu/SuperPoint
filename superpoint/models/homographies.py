@@ -2,26 +2,26 @@ import tensorflow as tf
 from tensorflow.contrib.image import transform as H_transform
 from math import pi
 import cv2 as cv
+import math
 
 from superpoint.utils.tools import dict_update
 
-
 homography_adaptation_default_config = {
-        'num': 1,
-        'aggregation': 'sum',
-        'valid_border_margin': 3,
-        'homographies': {
-            'translation': True,
-            'rotation': True,
-            'scaling': True,
-            'perspective': True,
-            'scaling_amplitude': 0.1,
-            'perspective_amplitude_x': 0.1,
-            'perspective_amplitude_y': 0.1,
-            'patch_ratio': 0.5,
-            'max_angle': pi,
-        },
-        'filter_counts': 0
+    'num': 1,
+    'aggregation': 'sum',
+    'valid_border_margin': 3,
+    'homographies': {
+        'translation': True,
+        'rotation': True,
+        'scaling': True,
+        'perspective': True,
+        'scaling_amplitude': 0.1,
+        'perspective_amplitude_x': 0.1,
+        'perspective_amplitude_y': 0.1,
+        'patch_ratio': 0.5,
+        'max_angle': pi,
+    },
+    'filter_counts': 0
 }
 
 
@@ -58,7 +58,7 @@ def homography_adaptation(image, net, config):
         count = H_transform(tf.expand_dims(tf.ones(tf.shape(image)[:3]), -1),
                             H_inv, interpolation='NEAREST')
         mask = H_transform(tf.expand_dims(tf.ones(tf.shape(image)[:3]), -1),
-                            H, interpolation='NEAREST')
+                           H, interpolation='NEAREST')
         # Ignore the detections too close to the border to avoid artifacts
         if config['valid_border_margin']:
             kernel = cv.getStructuringElement(
@@ -84,16 +84,16 @@ def homography_adaptation(image, net, config):
         return i + 1, probs, counts, images
 
     _, probs, counts, images = tf.while_loop(
-            lambda i, p, c, im: tf.less(i, config['num'] - 1),
-            step,
-            [0, probs, counts, images],
-            parallel_iterations=1,
-            back_prop=False,
-            shape_invariants=[
-                    tf.TensorShape([]),
-                    tf.TensorShape([None, None, None, None]),
-                    tf.TensorShape([None, None, None, None]),
-                    tf.TensorShape([None, None, None, 1, None])])
+        lambda i, p, c, im: tf.less(i, config['num'] - 1),
+        step,
+        [0, probs, counts, images],
+        parallel_iterations=1,
+        back_prop=False,
+        shape_invariants=[
+            tf.TensorShape([]),
+            tf.TensorShape([None, None, None, None]),
+            tf.TensorShape([None, None, None, None]),
+            tf.TensorShape([None, None, None, 1, None])])
 
     counts = tf.reduce_sum(counts, axis=-1)
     max_prob = tf.reduce_max(probs, axis=-1)
@@ -117,7 +117,7 @@ def homography_adaptation(image, net, config):
 def sample_homography(
         shape, perspective=True, scaling=True, rotation=True, translation=True,
         n_scales=5, n_angles=25, scaling_amplitude=0.1, perspective_amplitude_x=0.1,
-        perspective_amplitude_y=0.1, patch_ratio=0.5, max_angle=pi/2,
+        perspective_amplitude_y=0.1, patch_ratio=0.5, max_angle=pi / 2,
         allow_artifacts=False, translation_overflow=0.):
     """Sample a random valid homography.
 
@@ -161,9 +161,9 @@ def sample_homography(
         if not allow_artifacts:
             perspective_amplitude_x = min(perspective_amplitude_x, margin)
             perspective_amplitude_y = min(perspective_amplitude_y, margin)
-        perspective_displacement = tf.truncated_normal([1], 0., perspective_amplitude_y/2)
-        h_displacement_left = tf.truncated_normal([1], 0., perspective_amplitude_x/2)
-        h_displacement_right = tf.truncated_normal([1], 0., perspective_amplitude_x/2)
+        perspective_displacement = tf.truncated_normal([1], 0., perspective_amplitude_y / 2)
+        h_displacement_left = tf.truncated_normal([1], 0., perspective_amplitude_x / 2)
+        h_displacement_right = tf.truncated_normal([1], 0., perspective_amplitude_x / 2)
         pts2 += tf.stack([tf.concat([h_displacement_left, perspective_displacement], 0),
                           tf.concat([h_displacement_left, -perspective_displacement], 0),
                           tf.concat([h_displacement_right, perspective_displacement], 0),
@@ -174,10 +174,10 @@ def sample_homography(
     # sample several scales, check collision with borders, randomly pick a valid one
     if scaling:
         scales = tf.concat(
-                [[1.], tf.truncated_normal([n_scales], 1, scaling_amplitude/2)], 0)
+            [[1.], tf.truncated_normal([n_scales], 1, scaling_amplitude / 2)], 0)
         center = tf.reduce_mean(pts2, axis=0, keepdims=True)
         scaled = tf.expand_dims(pts2 - center, axis=0) * tf.expand_dims(
-                tf.expand_dims(scales, 1), 1) + center
+            tf.expand_dims(scales, 1), 1) + center
         if allow_artifacts:
             valid = tf.range(1, n_scales + 1)  # all scales are valid except scale=1
         else:
@@ -204,8 +204,8 @@ def sample_homography(
         rot_mat = tf.reshape(tf.stack([tf.cos(angles), -tf.sin(angles), tf.sin(angles),
                                        tf.cos(angles)], axis=1), [-1, 2, 2])
         rotated = tf.matmul(
-                tf.tile(tf.expand_dims(pts2 - center, axis=0), [n_angles+1, 1, 1]),
-                rot_mat) + center
+            tf.tile(tf.expand_dims(pts2 - center, axis=0), [n_angles + 1, 1, 1]),
+            rot_mat) + center
         if allow_artifacts:
             valid = tf.range(1, n_angles + 1)  # all angles are valid, except angle=0
         else:
@@ -219,9 +219,11 @@ def sample_homography(
     pts1 *= tf.expand_dims(shape, axis=0)
     pts2 *= tf.expand_dims(shape, axis=0)
 
-    def ax(p, q): return [p[0], p[1], 1, 0, 0, 0, -p[0] * q[0], -p[1] * q[0]]
+    def ax(p, q):
+        return [p[0], p[1], 1, 0, 0, 0, -p[0] * q[0], -p[1] * q[0]]
 
-    def ay(p, q): return [0, 0, 0, p[0], p[1], 1, -p[0] * q[1], -p[1] * q[1]]
+    def ay(p, q):
+        return [0, 0, 0, p[0], p[1], 1, -p[0] * q[1], -p[1] * q[1]]
 
     a_mat = tf.stack([f(pts1[i], pts2[i]) for i in range(4) for f in (ax, ay)], axis=0)
     p_mat = tf.transpose(tf.stack(
@@ -269,11 +271,11 @@ def compute_valid_mask(image_shape, homography, erosion_radius=0):
     """
     mask = H_transform(tf.ones(image_shape), homography, interpolation='NEAREST')
     if erosion_radius > 0:
-        kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (erosion_radius*2,)*2)
+        kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (erosion_radius * 2,) * 2)
         mask = tf.nn.erosion2d(
-                mask[tf.newaxis, ..., tf.newaxis],
-                tf.to_float(tf.constant(kernel)[..., tf.newaxis]),
-                [1, 1, 1, 1], [1, 1, 1, 1], 'SAME')[0, ..., 0] + 1.
+            mask[tf.newaxis, ..., tf.newaxis],
+            tf.to_float(tf.constant(kernel)[..., tf.newaxis]),
+            [1, 1, 1, 1], [1, 1, 1, 1], 'SAME')[0, ..., 0] + 1.
     return tf.to_int32(mask)
 
 
@@ -305,10 +307,85 @@ def warp_points(points, homography):
     return warped_points[0] if len(homography.shape) == 1 else warped_points
 
 
+def warp_points_angles(points, a_points, homography):
+    """
+      Warp a list of points with the INVERSE of the given homography, and get the transformed angle.
+      The inverse is used to be coherent with tf.contrib.image.transform
+
+      Arguments:
+          data['points']: list of N points, shape (N, 2).
+          data['angles']: list of N points's angle,shape (N, 1).
+          homography: batched or not (shapes (B, 8) and (8,) respectively).
+
+      Returns: a Tensor of shape (N, 2) or (B, N, 2) (depending on whether the homography
+              is batched) containing the new coordinates of the warped points.
+      """
+    H = tf.expand_dims(homography, axis=0) if len(homography.shape) == 1 else homography  # (B, 8) or (1, 8)
+    # ============ Transform position points
+    # Get the points to the homogeneous format
+    num_points = tf.shape(points)[0]
+    # [:, ::-1] from the (y,x) to (x,y)
+    points = tf.cast(points, tf.float32)[:, ::-1]
+    # homogeneous coordinates
+    points = tf.concat([points, tf.ones([num_points, 1], dtype=tf.float32)], -1)
+
+    # Apply the homography
+    H_inv = tf.transpose(flat2mat(invert_homography(H)))
+    warped_points = tf.tensordot(points, H_inv, [[1], [0]])
+    warped_points = warped_points[:, :2, :] / warped_points[:, 2:, :]
+    warped_points = tf.transpose(warped_points, [2, 0, 1])[:, :, ::-1]  # (x,y) to (y,x)
+    warped_points = warped_points[0] if len(homography.shape) == 1 else warped_points
+
+    # ============ Transform angle position points
+    num_a_points = tf.shape(a_points)[0]
+    a_points = tf.cast(a_points, tf.float32)[:, ::-1]
+    a_points = tf.concat([a_points, tf.ones([num_a_points, 1], dtype=tf.float32)], -1)
+    warped_a_points = tf.tensordot(a_points, H_inv, [[1], [0]])
+    warped_a_points = warped_a_points[:, :2, :] / warped_a_points[:, 2:, :]
+    warped_a_points = tf.transpose(warped_a_points, [2, 0, 1])[:, :, ::-1]
+    warped_a_points = warped_a_points[0] if len(homography.shape) == 1 else warped_a_points  # (x,y) to (y,x)
+
+    # ============ Get the new angle information
+    if len(homography.shape) == 1:
+        diff_x = warped_points[:, 1] - warped_a_points[:, 1]  # [N, ]
+        constant_x = tf.ones_like(diff_x, dtype=tf.float32) * 0.00000000000001
+        diff_x = tf.add(diff_x, constant_x)
+        diff_y = warped_points[:, 0] - warped_a_points[:, 0]  # [N, ]
+        tan_angle = tf.divide(diff_y, diff_x)
+        angles = (tf.math.atan(tan_angle) / pi) * 180
+        positive_angles = angles + 180
+        # tf.where(condition, x, y) if condition is true x else y
+        warped_angles = tf.where(tf.less(angles, 0), positive_angles, angles)
+        warped_angles = tf.expand_dims(warped_angles, axis=-1)  # [N, 1]
+    else:
+        diff_x = warped_points[:, :, 1] - warped_a_points[:, :, 1]  # [B, N]
+        constant_x = tf.ones_like(diff_x, dtype=tf.float32) * 0.00000000000001
+        diff_x = tf.add(diff_x, constant_x)
+        diff_y = warped_points[:, :, 0] - warped_a_points[:, :, 0]  # [B, N]
+        tan_angle = tf.divide(diff_y, diff_x)
+        angles = (tf.math.atan(tan_angle) / pi) * 180
+        positive_angles = angles + 180
+        warped_angles = tf.where(tf.less(angles, 0), positive_angles, angles)
+        warped_angles = tf.expand_dims(warped_angles, axis=-1)  # [B, N, 1]
+
+    return warped_points, warped_a_points, warped_angles
+
+
 def filter_points(points, shape):
     with tf.name_scope('filter_points'):
-        mask = (points >= 0) & (points <= tf.to_float(shape-1))
+        mask = (points >= 0) & (points <= tf.to_float(shape - 1))
         return tf.boolean_mask(points, tf.reduce_all(mask, -1))
+
+
+def filter_points_classes_angles(points, a_points, classes, angles, shape):
+    with tf.name_scope('filter_points_classes_angles'):
+        mask = (points >= 0) & (points <= tf.to_float(shape - 1))
+        o_points = tf.boolean_mask(points, tf.reduce_all(mask, -1))
+        o_a_points = tf.boolean_mask(a_points, tf.reduce_all(mask, -1))
+        o_classes = tf.boolean_mask(classes, tf.reduce_all(mask, -1))
+        o_angles = tf.boolean_mask(angles, tf.reduce_all(mask, -1))
+
+        return o_points, o_a_points, o_classes, o_angles
 
 
 # TODO: cleanup the two following functions

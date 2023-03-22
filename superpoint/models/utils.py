@@ -193,22 +193,24 @@ def spatial_nms(prob, size):
 
 
 def box_nms(prob, size, iou=0.1, min_prob=0.01, keep_top_k=0):
-    """Performs non maximum suppression on the heatmap by considering hypothetical
+    """Performs non-maximum suppression on the heatmap by considering hypothetical
     bounding boxes centered at each pixel's location (e.g. corresponding to the receptive
     field). Optionally only keeps the top k detections.
 
     Arguments:
         prob: the probability heatmap, with shape `[H, W]`.
-        size: a scalar, the size of the bouding boxes.
+        size: a scalar, the size of the bounding boxes.
         iou: a scalar, the IoU overlap threshold.
         min_prob: a threshold under which all probabilities are discarded before NMS.
         keep_top_k: an integer, the number of top scores to keep.
     """
     with tf.name_scope('box_nms'):
-        pts = tf.to_float(tf.where(tf.greater_equal(prob, min_prob)))
+        # tf.where(tf.greater_equal()) return the index where is True
+        # return the pts coordinates
+        pts = tf.to_float(tf.where(tf.greater_equal(prob, min_prob)))  # [N, 2]
         size = tf.constant(size/2.)
-        boxes = tf.concat([pts-size, pts+size], axis=1)
-        scores = tf.gather_nd(prob, tf.to_int32(pts))
+        boxes = tf.concat([pts-size, pts+size], axis=1)  # left upper point & right bottom point
+        scores = tf.gather_nd(prob, tf.to_int32(pts))  # get the prediction score
         with tf.device('/cpu:0'):
             indices = tf.image.non_max_suppression(
                     boxes, scores, tf.shape(boxes)[0], iou)
@@ -240,7 +242,7 @@ def points_head(inputs, **config):
         # [N, 1, H, W], H*W is the original size of input images
         prob = tf.depth_to_space(
                 x, config['grid_size'], data_format='NCHW' if cfirst else 'NHWC')
-        prob = tf.nn.sigmoid(prob, axis=cindex)
+        prob = tf.nn.sigmoid(prob)
         prob = tf.squeeze(prob, axis=cindex)  # [N, H, W]
 
     return {'logits': x, 'prob': prob}
@@ -304,7 +306,7 @@ def angle_head(inputs, **config):
         # [N, 1, H, W], H*W is the original size of input images
         ang = tf.depth_to_space(x, config['grid_size'],
                                 data_format='NCHW' if cfirst else 'NHWC')
-        ang = tf.nn.relu(ang, axis=cindex)
+        ang = tf.nn.relu(ang)
         ang = tf.squeeze(ang, axis=cindex)
 
     return {'angles_raw': x, 'angles': ang}
@@ -312,7 +314,7 @@ def angle_head(inputs, **config):
 
 def angles_loss(angles_map, angle_raw, valid_maks=None, **config):
     logits = tf.depth_to_space(angle_raw, config['grid_size'],data_format='NHWC')
-    logits = tf.nn.relu(logits, axis=-1)
+    logits = tf.nn.relu(logits)
     if logits.shape.ndims == 4:
         logits = tf.squeeze(logits, axis=-1)
     loss = tf.losses.mean_squared_error(labels=angles_map, predictions=logits, weights=valid_maks)

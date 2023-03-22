@@ -105,6 +105,10 @@ class FingernailMinutiae(BaseDataset):
             p_array = np.load(filename.decode('utf-8'))['points'].astype(np.float32)
             return p_array
 
+        def _read_a_points(filename):
+            a_p_array = np.load(filename.decode('utf-8'))['a_point'].astype(np.float32)
+            return a_p_array
+
         def _read_classes(filename):
             c_array = np.load(filename.decode('utf-8'))['classes'].astype(np.float32)
             return c_array
@@ -138,12 +142,15 @@ class FingernailMinutiae(BaseDataset):
         if has_keypoints:
             lb_path = tf.data.Dataset.from_tensor_slices(files['label_paths'])
             points = lb_path.map(lambda path: tf.py_func(_read_points, [path], tf.float32))
+            a_points = lb_path.map(lambda path: tf.py_func(_read_a_points, [path], tf.float32))
             classes = lb_path.map(lambda path: tf.py_func(_read_classes, [path], tf.float32))
             angles = lb_path.map(lambda path: tf.py_func(_read_angles, [path], tf.float32))
             points = points.map(lambda p: tf.reshape(p, [-1, 2]))  # [num_points, 2]
+            a_points = a_points.map(lambda p: tf.reshape(p, [-1, 2]))  # [num_points, 2]
             classes = classes.map(lambda c: tf.reshape(c, [-1, 1]))  # [num_points, 1]
             angles = angles.map(lambda a: tf.reshape(a, [-1, 1]))  # [num_points, 1]
             data = tf.data.Dataset.zip((data, points)).map(lambda d, p: {**d, 'keypoints': p})
+            data = tf.data.Dataset.zip((data, a_points)).map(lambda d, p: {**d, 'a_points': p})
             data = tf.data.Dataset.zip((data, classes)).map(lambda d, c: {**d, 'classes': c})
             data = tf.data.Dataset.zip((data, angles)).map(lambda d, a: {**d, 'angles': a})
             data = data.map(pipeline.add_dummy_valid_mask)
@@ -160,7 +167,7 @@ class FingernailMinutiae(BaseDataset):
         # Generate the warped pair only during training super_point model
         if config['warped_pair']['enable']:
             assert has_keypoints
-            warped = data.map_parallel(lambda d: pipeline.homographic_augmentation(
+            warped = data.map_parallel(lambda d: pipeline.homographic_augmentation_minutiae(
                 d, add_homography=True, **config['warped_pair']))
             if is_training and config['augmentation']['photometric']['enable']:
                 warped = warped.map_parallel(lambda d: pipeline.photometric_augmentation(
@@ -179,7 +186,7 @@ class FingernailMinutiae(BaseDataset):
             # At present, it cannot support homographic data augmentation for detecting minutiae
             if config['augmentation']['homographic']['enable']:
                 assert not config['warped_pair']['enable']  # doesn't support hom. aug.
-                data = data.map_parallel(lambda d: pipeline.homographic_augmentation(
+                data = data.map_parallel(lambda d: pipeline.homographic_augmentation_minutiae(
                     d, **config['augmentation']['homographic']))
 
         # Generate the keypoint map, classes map and angles map

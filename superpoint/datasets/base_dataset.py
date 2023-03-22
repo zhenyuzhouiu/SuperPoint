@@ -107,7 +107,8 @@ class BaseDataset(metaclass=ABCMeta):
         with tf.device('/cpu:0'):
             for n in self.split_names:
                 # self._get_data() return data
-                #  data: tf.data.Dataset.zip({'image', 'names', 'keypoints', 'valid_mask', 'keypoint_map'})
+                # data: tf.data.Dataset.zip({'image', 'names', 'keypoints', 'valid_mask', 'keypoint_map'})
+                # on the fingernail minutiae dataset, the training set and test set are same
                 self.tf_splits[n] = self._get_data(self.dataset, n, **self.config)
                 self.tf_next[n] = self.tf_splits[n].make_one_shot_iterator().get_next()
         self.end_set = tf.errors.OutOfRangeError
