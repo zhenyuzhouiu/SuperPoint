@@ -26,7 +26,7 @@ homography_adaptation_default_config = {
 
 
 def homography_adaptation(image, net, config):
-    """Perfoms homography adaptation.
+    """Performs homography adaptation.
     Inference using multiple random warped patches of the same input image for robust
     predictions.
     Arguments:
@@ -34,7 +34,7 @@ def homography_adaptation(image, net, config):
         net: A function that takes an image as input, performs inference, and outputs the
             prediction dictionary.
         config: A configuration dictionary containing optional entries such as the number
-            of sampled homographies `'num'`, the aggregation method `'aggregation'`.
+            of sampled homographs `'num'`, the aggregation method `'aggregation'`.
     Returns:
         A dictionary which contains the aggregated detection probabilities.
     """
@@ -82,6 +82,100 @@ def homography_adaptation(image, net, config):
         counts = tf.concat([counts, tf.expand_dims(count, -1)], axis=-1)
         images = tf.concat([images, tf.expand_dims(warped, -1)], axis=-1)
         return i + 1, probs, counts, images
+
+    _, probs, counts, images = tf.while_loop(
+        lambda i, p, c, im: tf.less(i, config['num'] - 1),
+        step,
+        [0, probs, counts, images],
+        parallel_iterations=1,
+        back_prop=False,
+        shape_invariants=[
+            tf.TensorShape([]),
+            tf.TensorShape([None, None, None, None]),
+            tf.TensorShape([None, None, None, None]),
+            tf.TensorShape([None, None, None, 1, None])])
+
+    counts = tf.reduce_sum(counts, axis=-1)
+    max_prob = tf.reduce_max(probs, axis=-1)
+    mean_prob = tf.reduce_sum(probs, axis=-1) / counts
+
+    if config['aggregation'] == 'max':
+        prob = max_prob
+    elif config['aggregation'] == 'sum':
+        prob = mean_prob
+    else:
+        raise ValueError('Unkown aggregation method: {}'.format(config['aggregation']))
+
+    if config['filter_counts']:
+        prob = tf.where(tf.greater_equal(counts, config['filter_counts']),
+                        prob, tf.zeros_like(prob))
+
+    return {'prob': prob, 'counts': counts,
+            'mean_prob': mean_prob, 'input_images': images, 'H_probs': probs}  # debug
+
+
+def homography_adaptation_minutiae(image, net, config):
+    """
+    Performs homography adaptation.
+    Inference using multiple random warped patches of the same input image for robust
+    predictions.
+    Arguments:
+        image: A `Tensor` with shape `[N, H, W, 1]`.
+        net: A function that takes an image as input, performs inference, and outputs the
+            prediction dictionary.
+        config: A configuration dictionary containing optional entries such as the number
+            of sampled homographs `'num'`, the aggregation method `'aggregation'`.
+    Returns:
+        A dictionary which contains the aggregated detection probabilities.
+    """
+
+    probs = net(image)['prob']
+    counts = tf.ones_like(probs)
+    images = image
+
+    probs = tf.expand_dims(probs, axis=-1)
+    counts = tf.expand_dims(counts, axis=-1)
+    images = tf.expand_dims(images, axis=-1)
+
+    shape = tf.shape(image)[1:3]
+    config = dict_update(homography_adaptation_default_config, config)
+
+    def step(i, probs, counts, images):
+        # Sample image patch
+        H = sample_homography(shape, **config['homographies'])
+        H_inv = invert_homography(H)
+        warped = H_transform(image, H, interpolation='BILINEAR')
+        count = H_transform(tf.expand_dims(tf.ones(tf.shape(image)[:3]), -1),
+                            H_inv, interpolation='NEAREST')
+        mask = H_transform(tf.expand_dims(tf.ones(tf.shape(image)[:3]), -1),
+                           H, interpolation='NEAREST')
+        # Ignore the detections too close to the border to avoid artifacts
+        if config['valid_border_margin']:
+            kernel = cv.getStructuringElement(
+                cv.MORPH_ELLIPSE, (config['valid_border_margin'] * 2,) * 2)
+            with tf.device('/cpu:0'):
+                count = tf.nn.erosion2d(
+                    count, tf.to_float(tf.constant(kernel)[..., tf.newaxis]),
+                    [1, 1, 1, 1], [1, 1, 1, 1], 'SAME')[..., 0] + 1.
+                mask = tf.nn.erosion2d(
+                    mask, tf.to_float(tf.constant(kernel)[..., tf.newaxis]),
+                    [1, 1, 1, 1], [1, 1, 1, 1], 'SAME')[..., 0] + 1.
+
+        # Predict detection probabilities
+        prob = net(warped)['prob']
+        prob = prob * mask
+        prob_proj = H_transform(tf.expand_dims(prob, -1), H_inv,
+                                interpolation='BILINEAR')[..., 0]
+        prob_proj = prob_proj * count
+
+        probs = tf.concat([probs, tf.expand_dims(prob_proj, -1)], axis=-1)
+        counts = tf.concat([counts, tf.expand_dims(count, -1)], axis=-1)
+        images = tf.concat([images, tf.expand_dims(warped, -1)], axis=-1)
+        return i + 1, probs, counts, images
+
+    # tf.while_loop(cond, body, loop_vars,
+    # shape_invariants, parallel_iterations,
+    # back_prop, swap_memory, maximum_iterations, name)
 
     _, probs, counts, images = tf.while_loop(
         lambda i, p, c, im: tf.less(i, config['num'] - 1),
