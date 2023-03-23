@@ -1,6 +1,8 @@
 import numpy as np
 import os
 import tensorflow as tf
+# export LD_LIBRARY_PATH=/usr/local/cuda-10.0/lib64:$LD_LIBRARY_PATH
+# export PATH=/usr/local/cuda-10.0/bin:$PATH
 os.environ['CUDA_VISIBLE_DEVICES'] = "1"
 gpu = tf.config.experimental.list_physical_devices('GPU')
 tf.config.experimental.set_memory_growth(device=gpu[0], enable=True)
@@ -15,11 +17,11 @@ from superpoint.settings import EXPER_PATH
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('config', type=str)
-    parser.add_argument('experiment_name', type=str)
-    parser.add_argument('--export_name', type=str, default=None)
-    parser.add_argument('--batch_size', type=int, default=1)
-    parser.add_argument('--pred_only', action='store_true')
+    parser.add_argument('--config', type=str, default='configs/magic-point_coco_export.yaml')
+    parser.add_argument('--experiment_name', type=str, default='magic-point_synth')
+    parser.add_argument('--export_name', type=str, default='magic-point_coco-tmp')
+    parser.add_argument('--batch_size', type=int, default=5)
+    parser.add_argument('--pred_only', action='store_true', default=False)
     args = parser.parse_args()
 
     experiment_name = args.experiment_name
@@ -54,11 +56,12 @@ if __name__ == '__main__':
             data = []
             try:
                 for _ in range(batch_size):
-                    data.append(next(test_set))
+                    data.append(next(test_set))  # [{image: array, name:, ...}, {image: array, name:, ...} ]
             except (StopIteration, dataset.end_set):
                 if not data:
                     break
                 data += [data[-1] for _ in range(batch_size - len(data))]  # add dummy
+            # {'image': tuple with batch size, 'name': tuple with batch size}
             data = dict(zip(data[0], zip(*[d.values() for d in data])))
 
             # Predict

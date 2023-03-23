@@ -1,6 +1,6 @@
 data:
     name: 'fingernail_minutiae'
-    labels: outputs/fingernail_minutiae_label-240-320  # Complete with your export labels
+    labels: outputs/fingernail_minutiae_apoint_label-240-320  # Complete with your export labels
     cache_in_memory: false
     validation_size: 129
     augmentation:
@@ -19,7 +19,7 @@ data:
                     kernel_size_range: [100, 150]
                 motion_blur: {max_kernel_size: 3}
         homographic:
-            enable: false
+            enable: true
             params:
                 translation: true
                 rotation: true

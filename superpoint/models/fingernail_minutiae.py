@@ -6,35 +6,45 @@ from .utils import minutiae_head, minutiae_loss, box_nms
 from .homographies import homography_adaptation
 from .utils import points_head, points_loss, classes_head, classes_loss, angle_head, angles_loss
 
+
 class FingernailMinutiae(BaseModel):
     input_spec = {
-            'image': {'shape': [None, None, None, 1], 'type': tf.float32}
+        'image': {'shape': [None, None, None, 1], 'type': tf.float32}
     }
     required_config_keys = []
     default_config = {
-            'data_format': 'channels_first',
-            'kernel_reg': 0.,
-            'grid_size': 8,
-            'detection_threshold': 0.4,
-            'homography_adaptation': {'num': 0},
-            'nms': 0,
-            'top_k': 0
+        'data_format': 'channels_first',
+        'kernel_reg': 0.,
+        'grid_size': 8,
+        'detection_threshold': 0.4,
+        'homography_adaptation': {'num': 0},
+        'nms': 0,
+        'top_k': 0
     }
 
     def _model(self, inputs, mode, **config):
         config['training'] = (mode == Mode.TRAIN)
         image = inputs['image']
 
+        # def net(image):
+        #     if config['data_format'] == 'channels_first':
+        #         image = tf.transpose(image, [0, 3, 1, 2])
+        #     features = vgg_backbone(image, **config)  # [N, F, H/8, W/8]
+        #     output_p = points_head(features, **config)
+        #     output_c = classes_head(features, **config)
+        #     output_a = angle_head(features, **config)
+        #     # outputs = minutiae_head(features, **config)
+        #     return {**output_p, **output_c, **output_a}
+
         def net(image):
             if config['data_format'] == 'channels_first':
                 image = tf.transpose(image, [0, 3, 1, 2])
             features = vgg_backbone(image, **config)  # [N, F, H/8, W/8]
-            output_p = points_head(features, **config)
-            output_c = classes_head(features, **config)
-            output_a = angle_head(features, **config)
-            # outputs = minutiae_head(features, **config)
-            return {**output_p, **output_c, **output_a}
+            outputs = minutiae_head(features, **config)
+            return outputs
 
+        # To do by Zhenyu ZHOU
+        # The fingernail minutiae prediction cannot support homography_adaptation function
         if (mode == Mode.PRED) and config['homography_adaptation']['num']:
             outputs = homography_adaptation(image, net, config['homography_adaptation'])
         else:
@@ -53,7 +63,7 @@ class FingernailMinutiae(BaseModel):
 
         return outputs
 
-    # def _loss(self, outputs, inputs, **config):
+    # def _loss_will_be_delete(self, outputs, inputs, **config):
     #     if config['data_format'] == 'channels_first':
     #         # if outputs['prob'].shape.ndims == 3:
     #         #     outputs['prob'] = tf.expand_dims(outputs['prob'], 1)
@@ -65,17 +75,22 @@ class FingernailMinutiae(BaseModel):
     #     return loss
 
     def _loss(self, outputs, inputs, **config):
-        if config['data_format'] == 'channels_first':
-            outputs['logits'] = tf.transpose(outputs['logits'], [0, 2, 3, 1])
-            outputs['classes_raw'] = tf.transpose(outputs['classes_raw'], [0, 2, 3, 1])
-            outputs['angles_raw'] = tf.transpose(outputs['angles_raw'], [0, 2, 3, 1])
-        loss_p = points_loss(inputs['keypoint_map'], outputs['logits'], inputs['valid_mask'], **config)
-        loss_c = classes_loss(inputs['classes_map'], outputs['classes_raw'], inputs['keypoint_map'], **config)
-        loss_a = angles_loss(inputs['angles_map'], outputs['angles_raw'], inputs['keypoint_map'], **config)
-        loss = config['p_loss']*loss_p + config['c_loss']*loss_c + config['a_loss']*loss_a
+        loss = minutiae_loss(outputs, inputs, **config)
         return loss
 
+    # def _loss(self, outputs, inputs, **config):
+    #     if config['data_format'] == 'channels_first':
+    #         outputs['logits'] = tf.transpose(outputs['logits'], [0, 2, 3, 1])
+    #         outputs['classes_raw'] = tf.transpose(outputs['classes_raw'], [0, 2, 3, 1])
+    #         outputs['angles_raw'] = tf.transpose(outputs['angles_raw'], [0, 2, 3, 1])
+    #     loss_p = points_loss(inputs['keypoint_map'], outputs['logits'], inputs['valid_mask'], **config)
+    #     loss_c = classes_loss(inputs['classes_map'], outputs['classes_raw'], inputs['keypoint_map'], **config)
+    #     loss_a = angles_loss(inputs['angles_map'], outputs['angles_raw'], inputs['keypoint_map'], **config)
+    #     loss = config['p_loss']*loss_p + config['c_loss']*loss_c + config['a_loss']*loss_a
+    #     return loss
+
     def _metrics(self, outputs, inputs, **config):
+
         pred = inputs['valid_mask'] * outputs['pred']
         labels = inputs['keypoint_map']
 

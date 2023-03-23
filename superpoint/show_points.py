@@ -1,5 +1,6 @@
+import math
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = "1"
+os.environ['CUDA_VISIBLE_DEVICES'] = "0"
 import cv2
 import argparse
 import numpy as np
@@ -32,7 +33,7 @@ def show_path(images_path, points_path, mode=''):
         print("The number of images is not equal to the number of ground truth.")
 
 
-def show_file(images_path, points_path, resize=[1080, 1920]):
+def show_file(images_path, points_path, resize=[1080, 1920], visualization='minutiae'):
     """
     Args:
         images_file:
@@ -64,28 +65,59 @@ def show_file(images_path, points_path, resize=[1080, 1920]):
             img_float = img_data.eval()
 
         npz = np.load(os.path.join(points_path, file_name))
-        gt = npz['points']
-        for j in range(gt.shape[0]):
-            point = gt[j]
-            point = (int(point[1]), int(point[0]))
-            cv2.circle(img_float, point, radius=1, color=(1, 0, 0), thickness=1)
-        plt.figure(1)
-        plt.subplot(1, 1, 1)
-        plt.imshow(img_float)
-        plt.show()
+        if visualization == 'minutiae':
+            gt = npz['points']
+            gt_c = npz['classes']
+            gt_a = npz['angles']
+            for j in range(gt.shape[0]):
+                point = gt[j]
+                cls = gt_c[j]
+                ang = gt_a[j]
+                point = (int(point[1]), int(point[0]))
+                dist = 6
+                if 0<=ang<=90:
+                    dx = dist*math.cos(ang)
+                    dy = dist*math.sin(ang)
+                    point2 = (int(point[0]+dx), int(point[1]+dy))
+                else:
+                    ang = 180-ang
+                    dx = dist * math.cos(ang)
+                    dy = dist * math.sin(ang)
+                    point2 = (int(point[0]-dx), int(point[1]+dy))
+                if cls == 1:  # for bifurcation
+                    cv2.arrowedLine(img_float, point, point2, color=[255, 0, 0], thickness=1, tipLength=0.5)
+                else:
+                    cv2.arrowedLine(img_float, point, point2, color=[0, 0, 255], thickness=1, tipLength=0.5)
+
+            plt.figure(1)
+            plt.subplot(1, 1, 1)
+            plt.imshow(img_float)
+            plt.show()
+        else:
+            gt = npz['points']
+            for j in range(gt.shape[0]):
+                point = gt[j]
+                point = (int(point[1]), int(point[0]))
+                cv2.circle(img_float, point, radius=1, color=(1, 0, 0), thickness=1)
+            plt.figure(1)
+            plt.subplot(1, 1, 1)
+            plt.imshow(img_float)
+            plt.show()
+
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--images_path', type=str,
-                        default='../data_dir/COCO/train2014', help='the source images path',
+                        default='../data_dir/fingernail/train', help='the source images path',
                         dest='images_path')
     parser.add_argument('--points_path', type=str,
-                        default='../exper_dir/outputs/magic-point_coco-export1',
+                        default='../exper_dir/outputs/fingernail-minutiae-multihead_export',
                         help='the points position path',
                         dest='points_path')
     parser.add_argument('--resize', type=int, default=[240, 320], help='resize the source image to the size [h, w]',
                         dest='resize')
+    parser.add_argument('--visualization', type=str, default='minutiae', dest='visualization')
     args = parser.parse_args()
 
-    show_file(args.images_path, args.points_path, args.resize)
+    show_file(args.images_path, args.points_path, args.resize, args.visualization)
