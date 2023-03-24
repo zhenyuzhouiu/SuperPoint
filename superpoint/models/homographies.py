@@ -128,27 +128,44 @@ def homography_adaptation_minutiae(image, net, config):
     Returns:
         A dictionary which contains the aggregated detection probabilities.
     """
-
-    probs = net(image)['prob']
+    outputs = net(image)
+    probs = outputs['prob']
+    classes = outputs['classes']
+    angles = outputs['angles']
     counts = tf.ones_like(probs)
     images = image
 
-    probs = tf.expand_dims(probs, axis=-1)
+    probs = tf.expand_dims(probs, axis=-1)  # [N, H, W, 1]
+    classes = tf.expand_dims(classes, axis=-1)
+    angles = tf.expand_dims(angles, axis=-1)
     counts = tf.expand_dims(counts, axis=-1)
-    images = tf.expand_dims(images, axis=-1)
+    images = tf.expand_dims(images, axis=-1)  # [N, H, W, 1, 1]
 
     shape = tf.shape(image)[1:3]
     config = dict_update(homography_adaptation_default_config, config)
 
     def step(i, probs, counts, images):
+        """
+        After several number of homograph transformation
+        Args:
+            i: number of homograph transformation
+            probs:  [N, H, W, num]
+            counts: [N, H, W, num]
+            images: [N, H, W, 1, num]
+
+        Returns:
+
+        """
         # Sample image patch
+        # homography: batched or not (shapes(B, 8) and (8,) respectively).
         H = sample_homography(shape, **config['homographies'])
         H_inv = invert_homography(H)
         warped = H_transform(image, H, interpolation='BILINEAR')
+        # tf.shape(image)[:3] [N, H, W]
         count = H_transform(tf.expand_dims(tf.ones(tf.shape(image)[:3]), -1),
-                            H_inv, interpolation='NEAREST')
+                            H_inv, interpolation='NEAREST')  # [N, H, W, 1]
         mask = H_transform(tf.expand_dims(tf.ones(tf.shape(image)[:3]), -1),
-                           H, interpolation='NEAREST')
+                           H, interpolation='NEAREST')  # [N, H, W, 1]
         # Ignore the detections too close to the border to avoid artifacts
         if config['valid_border_margin']:
             kernel = cv.getStructuringElement(
@@ -162,10 +179,19 @@ def homography_adaptation_minutiae(image, net, config):
                     [1, 1, 1, 1], [1, 1, 1, 1], 'SAME')[..., 0] + 1.
 
         # Predict detection probabilities
-        prob = net(warped)['prob']
-        prob = prob * mask
+        output = net(warped)
+        prob = output['prob']
+        cls = output['classes']
+        ang = output['angles']
+        prob = prob * mask  # delete border artifacts
+        cls = cls * mask
+        ang = ang * mask
         prob_proj = H_transform(tf.expand_dims(prob, -1), H_inv,
                                 interpolation='BILINEAR')[..., 0]
+        cls_proj = H_transform(tf.expand_dims(cls, -1), H_inv,
+                               interpolation='BILINEAR')[..., 0]
+        ang_proj = H_transform(tf.expand_dims(ang, -1), H_inv,
+                               interpolation='BILINEAR')[..., 0]
         prob_proj = prob_proj * count
 
         probs = tf.concat([probs, tf.expand_dims(prob_proj, -1)], axis=-1)
