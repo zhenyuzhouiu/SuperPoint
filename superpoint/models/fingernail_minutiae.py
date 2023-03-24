@@ -91,10 +91,13 @@ class FingernailMinutiae(BaseModel):
 
     def _metrics(self, outputs, inputs, **config):
 
+        # for all points and for all classes
         pred = inputs['valid_mask'] * outputs['pred']
         labels = inputs['keypoint_map']
 
         precision = tf.reduce_sum(pred * labels) / tf.reduce_sum(pred)
         recall = tf.reduce_sum(pred * labels) / tf.reduce_sum(labels)
+
+        # for
 
         return {'precision': precision, 'recall': recall}

@@ -2,7 +2,7 @@ import tensorflow as tf
 from tensorflow.contrib.image import transform as H_transform
 from math import pi
 import cv2 as cv
-import math
+from tensorflow.python.ops import gen_array_ops
 
 from superpoint.utils.tools import dict_update
 
@@ -144,12 +144,14 @@ def homography_adaptation_minutiae(image, net, config):
     shape = tf.shape(image)[1:3]
     config = dict_update(homography_adaptation_default_config, config)
 
-    def step(i, probs, counts, images):
+    def step(i, probs, classes, angles, counts, images):
         """
         After several number of homograph transformation
         Args:
             i: number of homograph transformation
             probs:  [N, H, W, num]
+            classes: [N, H, W, num]
+            angles: [N, H, W, num]
             counts: [N, H, W, num]
             images: [N, H, W, 1, num]
 
@@ -193,24 +195,30 @@ def homography_adaptation_minutiae(image, net, config):
         ang_proj = H_transform(tf.expand_dims(ang, -1), H_inv,
                                interpolation='BILINEAR')[..., 0]
         prob_proj = prob_proj * count
+        cls_proj = cls_proj * count
+        ang_proj = ang_proj * count
 
         probs = tf.concat([probs, tf.expand_dims(prob_proj, -1)], axis=-1)
+        classes = tf.concat([classes, tf.expand_dims(cls_proj, -1)], axis=-1)
+        angles = tf.concat([angles, tf.expand_dims(ang_proj, -1)], axis=-1)
         counts = tf.concat([counts, tf.expand_dims(count, -1)], axis=-1)
         images = tf.concat([images, tf.expand_dims(warped, -1)], axis=-1)
-        return i + 1, probs, counts, images
+        return i + 1, probs, classes, angles, counts, images
 
     # tf.while_loop(cond, body, loop_vars,
     # shape_invariants, parallel_iterations,
     # back_prop, swap_memory, maximum_iterations, name)
 
-    _, probs, counts, images = tf.while_loop(
-        lambda i, p, c, im: tf.less(i, config['num'] - 1),
+    _, probs, classes, angles, counts, images = tf.while_loop(
+        lambda i, p, cl, a, c, im: tf.less(i, config['num'] - 1),
         step,
-        [0, probs, counts, images],
+        [0, probs, classes, angles, counts, images],
         parallel_iterations=1,
         back_prop=False,
         shape_invariants=[
             tf.TensorShape([]),
+            tf.TensorShape([None, None, None, None]),
+            tf.TensorShape([None, None, None, None]),
             tf.TensorShape([None, None, None, None]),
             tf.TensorShape([None, None, None, None]),
             tf.TensorShape([None, None, None, 1, None])])
@@ -218,6 +226,19 @@ def homography_adaptation_minutiae(image, net, config):
     counts = tf.reduce_sum(counts, axis=-1)
     max_prob = tf.reduce_max(probs, axis=-1)
     mean_prob = tf.reduce_sum(probs, axis=-1) / counts
+    # get the maximum occurrence frequency of predicted classes
+    cls_no = tf.cast(tf.equal(classes, 0), tf.int32)  # [N, H, W, num]
+    cls_b = tf.cast(tf.equal(classes, 1), tf.int32)
+    cls_e = tf.cast(tf.equal(classes, 2), tf.int32)
+    cls_no = tf.reduce_sum(cls_no, axis=-1)
+    cls_b = tf.reduce_sum(cls_b, axis=-1)
+    cls_e = tf.reduce_sum(cls_e, axis=-1)
+    freq_cls = tf.concat([tf.expand_dims(cls_no, -1),
+                          tf.expand_dims(cls_b, -1),
+                          tf.expand_dims(cls_e, -1)], axis=-1)
+    freq_cls = tf.argmax(freq_cls, axis=-1)
+    # mean_ang = tf.reduce_sum(angles, axis=-1) / counts
+    mean_ang = tf.reduce_mean(angles, axis=-1)
 
     if config['aggregation'] == 'max':
         prob = max_prob
@@ -230,7 +251,7 @@ def homography_adaptation_minutiae(image, net, config):
         prob = tf.where(tf.greater_equal(counts, config['filter_counts']),
                         prob, tf.zeros_like(prob))
 
-    return {'prob': prob, 'counts': counts,
+    return {'prob': prob, 'classes': freq_cls, 'angles': mean_ang, 'counts': counts,
             'mean_prob': mean_prob, 'input_images': images, 'H_probs': probs}  # debug
 
 
