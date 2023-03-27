@@ -17,8 +17,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', type=str, default='configs/fingernail-minutiae_fingernail_export.yaml')
     parser.add_argument('--experiment_name', type=str, default='fingernail-minutiae_fingernail_multihead')
-    parser.add_argument('--export_name', type=str, default='fingernail-minutiae-multihead_export')
-    parser.add_argument('--batch_size', type=int, default=5)
+    parser.add_argument('--export_name', type=str, default='fingernail-minutiae-multihead_fingernail_session_1')
+    parser.add_argument('--batch_size', type=int, default=43)
     parser.add_argument('--pred_only', action='store_true', default=True)  # default value False
     parser.add_argument('--head_mode', type=str, default='multiple')
     args = parser.parse_args()
@@ -83,19 +83,21 @@ if __name__ == '__main__':
                     pred = {'points': [np.array(np.where(e)).T for e in p]}  # (row, column)
                 else:
                     # output p is an array with [N, H, W]
-                    p = net.predict(data, keys=['pred', 'classes', 'angles'], batch=True)
+                    p = net.predict(data, keys=['prob', 'pred', 'classes', 'angles'], batch=True)
+                    p_prob = p['prob']
                     p_p = p['pred']
                     p_c = p['classes']
                     p_a = p['angles']
-                    pred_p, pred_c, pred_a = [], [], []
+                    pred_prob, pred_p, pred_c, pred_a = [], [], [], []
                     for b in range(batch_size):
-                        p_p_i, p_c_i, p_a_i = p_p[b], p_c[b], p_a[b]
+                        p_pred_i, p_p_i, p_c_i, p_a_i = p_prob[b], p_p[b], p_c[b], p_a[b]
                         row_index, column_index = np.where(p_p_i)
                         pred_p.append(np.array((row_index, column_index)).T)
                         pred_c.append(p_c_i[row_index, column_index].reshape(-1, 1))
                         pred_a.append(p_a_i[row_index, column_index].reshape(-1, 1))
+                        pred_prob.append(p_pred_i[row_index, column_index].reshape(-1, 1))
 
-                    pred = {'points': pred_p, 'classes': pred_c, 'angles': pred_a}
+                    pred = {'prob': pred_prob, 'points': pred_p, 'classes': pred_c, 'angles': pred_a}
             else:
                 # pred is a list
                 # pred = {'prob': (batch, h, w), 'counts': (batch, h, w), 'mean_prob': (batch, h, w) ...}

@@ -1,11 +1,14 @@
 import math
 import os
+import shutil
+
 os.environ['CUDA_VISIBLE_DEVICES'] = "0"
 import cv2
 import argparse
 import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 
 
 def show_path(images_path, points_path, mode=''):
@@ -48,7 +51,7 @@ def show_file(images_path, points_path, resize=[1080, 1920], visualization='minu
     for i in range(200):
         file_name = npz_files[i]
         # 读取图像的原始数据
-        image_raw_data = tf.gfile.FastGFile(os.path.join(images_path, file_name.strip(".npz")+'.jpg'), 'rb').read()
+        image_raw_data = tf.gfile.FastGFile(os.path.join(images_path, file_name.strip(".npz") + '.jpg'), 'rb').read()
 
         with tf.Session() as session:
             # 对图像进行jpeg的格式解码从而得到图像对应的三维矩阵
@@ -75,18 +78,22 @@ def show_file(images_path, points_path, resize=[1080, 1920], visualization='minu
                 ang = gt_a[j]
                 point = (int(point[1]), int(point[0]))
                 dist = 6
-                if 0<=ang<=90:
-                    dx = dist*math.cos(ang)
-                    dy = dist*math.sin(ang)
-                    point2 = (int(point[0]+dx), int(point[1]+dy))
+                # math.cos() and math.sin() should give a radian input
+                if 0 <= ang <= 90:
+                    dx = dist * math.cos((ang/180)*math.pi)
+                    dy = dist * math.sin((ang/180)*math.pi)
+                    point2 = (int(point[0] + dx), int(point[1] + dy))
                 else:
-                    ang = 180-ang
-                    dx = dist * math.cos(ang)
-                    dy = dist * math.sin(ang)
-                    point2 = (int(point[0]-dx), int(point[1]+dy))
+                    ang = 180 - ang
+
+                    dx = dist * math.cos((ang/180)*math.pi)
+                    dy = dist * math.sin((ang/180)*math.pi)
+                    point2 = (int(point[0] - dx), int(point[1] + dy))
                 if cls == 1:  # for bifurcation
+                    # bifurcation with red color
                     cv2.arrowedLine(img_float, point, point2, color=[255, 0, 0], thickness=1, tipLength=0.5)
                 else:
+                    # ending with blue color
                     cv2.arrowedLine(img_float, point, point2, color=[0, 0, 255], thickness=1, tipLength=0.5)
 
             plt.figure(1)
@@ -105,6 +112,42 @@ def show_file(images_path, points_path, resize=[1080, 1920], visualization='minu
             plt.show()
 
 
+def npz_to_txt(points_path, txt_path):
+    if os.path.exists(txt_path):
+        shutil.rmtree(txt_path)
+    os.mkdir(txt_path)
+
+    npz_files = os.listdir(points_path)
+    npz_files.sort()
+    pbar = tqdm(npz_files)
+    for n in pbar:
+        file_name = n
+        npz = np.load(os.path.join(points_path, file_name))
+        prob = npz['prob']
+        # prob_max, prob_min = np.max(prob), np.min(prob)
+        # prob = (prob - prob_min) / (prob_max - prob_min)
+        point = npz['points']
+        cls = npz['classes']
+        ang = npz['angles']
+        for j in range(prob.shape[0]):
+            prob_j = prob[j]
+            point_j = point[j]
+            cls_j = cls[j]
+            ang_j = ang[j]
+            ang_j = np.clip(ang_j, 1, 180)  # normalize angle range
+            with open(os.path.join(txt_path, n.split('.')[0] + '.txt'), 'a+') as tf:
+                # x y angle cls score
+                if cls_j == 1:  # for bifurcation
+                    line = str(int(point_j[1])) + str(' ') + str(int(point_j[0])) + str(' ') + \
+                           str(int(ang_j)) + str(' ') + str(int(2)) + str(' ') + str(round(prob_j[0] * 100)) + str(
+                        '\n')
+                    tf.write(line)
+                else:  # for ending
+                    line = str(int(point_j[1])) + str(' ') + str(int(point_j[0])) + str(' ') + \
+                           str(int(ang_j)) + str(' ') + str(int(1)) + str(' ') + str(round(prob_j[0] * 100)) + str(
+                        '\n')
+                    tf.write(line)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -112,12 +155,15 @@ if __name__ == "__main__":
                         default='../data_dir/fingernail/train', help='the source images path',
                         dest='images_path')
     parser.add_argument('--points_path', type=str,
-                        default='../exper_dir/outputs/fingernail-minutiae-multihead_export',
+                        default='../exper_dir/outputs/fingernail-minutiae-multihead_fingernail_two_session/no_homograph_adaption',
                         help='the points position path',
                         dest='points_path')
+    parser.add_argument('--txt_path', type=str,
+                        default='../exper_dir/outputs/fingernail-minutiae-multihead_fingernail_two_session/no_homograph_adaption_txt')
     parser.add_argument('--resize', type=int, default=[240, 320], help='resize the source image to the size [h, w]',
                         dest='resize')
     parser.add_argument('--visualization', type=str, default='minutiae', dest='visualization')
     args = parser.parse_args()
 
-    show_file(args.images_path, args.points_path, args.resize, args.visualization)
+    # show_file(args.images_path, args.points_path, args.resize, args.visualization)
+    npz_to_txt(args.points_path, args.txt_path)

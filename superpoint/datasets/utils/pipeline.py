@@ -57,7 +57,7 @@ def homographic_augmentation(data, add_homography=False, **config):
 
 
 def homographic_augmentation_minutiae(data, add_homography=False, **config):
-    with tf.name_scope('homographic_augmentation'):
+    with tf.name_scope('homographic_augmentation_minutiae'):
         image_shape = tf.shape(data['image'])[:2]
         homography = sample_homography(image_shape, **config['params'])[0]
         warped_image = tf.contrib.image.transform(
@@ -127,14 +127,15 @@ def add_keypoint_classe_angle_map(data):
         kp = tf.minimum(tf.to_int32(tf.round(data['keypoints'])), image_shape-1)
         # tf.shape(kp)[0] should equal to tf.shape(data['classes'])[0]
         cmap = tf.scatter_nd(kp, tf.to_int32(tf.squeeze(data['classes'], axis=-1)), image_shape)
-        cmap = tf.clip_by_value(cmap, 0, 2)
+        cmap = tf.clip_by_value(cmap, 0, 2)  # [0, 1, 2]
     # To do by Zhenyu ZHOU
     # At present, it cannot support CSL for angular loss
     with tf.name_scope('add_keypoint_map'):
         image_shape = tf.shape(data['image'])[:2]
         kp = tf.minimum(tf.to_int32(tf.round(data['keypoints'])), image_shape-1)
-        amap = tf.scatter_nd(kp, tf.to_int32(tf.squeeze(data['angles'], axis=-1)), image_shape)
-        amap = tf.clip_by_value(amap, 0, 179)
+        # tf.to_int32(tf.squeeze(data['angles'])) [0, 1, 2, 3 ... 179] + 1
+        amap = tf.scatter_nd(kp, tf.to_int32(tf.squeeze(data['angles'] + 1, axis=-1)), image_shape)
+        amap = tf.clip_by_value(amap, 0, 180)
 
     return {**data, 'keypoint_map': kmap, 'classes_map': cmap, 'angles_map': amap}
 

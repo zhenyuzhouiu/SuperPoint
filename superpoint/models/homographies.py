@@ -131,6 +131,7 @@ def homography_adaptation_minutiae(image, net, config):
     outputs = net(image)
     probs = outputs['prob']
     classes = outputs['classes']
+    classes = tf.cast(classes, tf.float32)
     angles = outputs['angles']
     counts = tf.ones_like(probs)
     images = image
@@ -184,6 +185,7 @@ def homography_adaptation_minutiae(image, net, config):
         output = net(warped)
         prob = output['prob']
         cls = output['classes']
+        cls = tf.cast(cls, tf.float32)
         ang = output['angles']
         prob = prob * mask  # delete border artifacts
         cls = cls * mask
@@ -208,7 +210,6 @@ def homography_adaptation_minutiae(image, net, config):
     # tf.while_loop(cond, body, loop_vars,
     # shape_invariants, parallel_iterations,
     # back_prop, swap_memory, maximum_iterations, name)
-
     _, probs, classes, angles, counts, images = tf.while_loop(
         lambda i, p, cl, a, c, im: tf.less(i, config['num'] - 1),
         step,
@@ -227,9 +228,9 @@ def homography_adaptation_minutiae(image, net, config):
     max_prob = tf.reduce_max(probs, axis=-1)
     mean_prob = tf.reduce_sum(probs, axis=-1) / counts
     # get the maximum occurrence frequency of predicted classes
-    cls_no = tf.cast(tf.equal(classes, 0), tf.int32)  # [N, H, W, num]
-    cls_b = tf.cast(tf.equal(classes, 1), tf.int32)
-    cls_e = tf.cast(tf.equal(classes, 2), tf.int32)
+    cls_no = tf.cast(tf.equal(classes, 0), tf.float32)  # [N, H, W, num]
+    cls_b = tf.cast(tf.equal(classes, 1), tf.float32)
+    cls_e = tf.cast(tf.equal(classes, 2), tf.float32)
     cls_no = tf.reduce_sum(cls_no, axis=-1)
     cls_b = tf.reduce_sum(cls_b, axis=-1)
     cls_e = tf.reduce_sum(cls_e, axis=-1)
@@ -487,22 +488,22 @@ def warp_points_angles(points, a_points, homography):
     warped_a_points = warped_a_points[0] if len(homography.shape) == 1 else warped_a_points  # (x,y) to (y,x)
 
     # ============ Get the new angle information
-    if len(homography.shape) == 1:
-        diff_x = warped_points[:, 1] - warped_a_points[:, 1]  # [N, ]
+    if len(homography.shape) == 1:  # [N, 2]
+        diff_x = warped_a_points[:, 1] - warped_points[:, 1]  # [N, ]
         constant_x = tf.ones_like(diff_x, dtype=tf.float32) * 0.00000000000001
         diff_x = tf.add(diff_x, constant_x)
-        diff_y = warped_points[:, 0] - warped_a_points[:, 0]  # [N, ]
+        diff_y = warped_a_points[:, 0] - warped_points[:, 0]
         tan_angle = tf.divide(diff_y, diff_x)
         angles = (tf.math.atan(tan_angle) / pi) * 180
         positive_angles = angles + 180
         # tf.where(condition, x, y) if condition is true x else y
         warped_angles = tf.where(tf.less(angles, 0), positive_angles, angles)
         warped_angles = tf.expand_dims(warped_angles, axis=-1)  # [N, 1]
-    else:
-        diff_x = warped_points[:, :, 1] - warped_a_points[:, :, 1]  # [B, N]
+    else:  # [B, N, 2]
+        diff_x = warped_a_points[:, :, 1] - warped_points[:, :, 1]  # [B, N]
         constant_x = tf.ones_like(diff_x, dtype=tf.float32) * 0.00000000000001
         diff_x = tf.add(diff_x, constant_x)
-        diff_y = warped_points[:, :, 0] - warped_a_points[:, :, 0]  # [B, N]
+        diff_y = warped_a_points[:, :, 0] - warped_points[:, :, 0]  # [B, N]
         tan_angle = tf.divide(diff_y, diff_x)
         angles = (tf.math.atan(tan_angle) / pi) * 180
         positive_angles = angles + 180

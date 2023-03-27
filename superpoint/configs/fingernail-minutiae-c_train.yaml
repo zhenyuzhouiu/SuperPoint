@@ -33,7 +33,7 @@ data:
                 allow_artifacts: true
             valid_border_margin: 3
 model:
-    name: 'fingernail_minutiae'
+    name: 'fingernail_minutiae_c'
     batch_size: 30
     eval_batch_size: 32
     learning_rate: 0.001

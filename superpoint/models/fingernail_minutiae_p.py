@@ -7,7 +7,7 @@ from .homographies import homography_adaptation, homography_adaptation_minutiae
 from .utils import points_head, points_loss, classes_head, classes_loss, angle_head, angles_loss
 
 
-class FingernailMinutiae(BaseModel):
+class FingernailMinutiaeP(BaseModel):
     input_spec = {
         'image': {'shape': [None, None, None, 1], 'type': tf.float32}
     }
@@ -31,20 +31,9 @@ class FingernailMinutiae(BaseModel):
                 image = tf.transpose(image, [0, 3, 1, 2])
             features = vgg_backbone(image, **config)  # [N, F, H/8, W/8]
             output_p = points_head(features, **config)
-            output_c = classes_head(features, **config)
-            output_a = angle_head(features, **config)
             # outputs = minutiae_head(features, **config)
-            return {**output_p, **output_c, **output_a}
+            return output_p
 
-        # def net(image):
-        #     if config['data_format'] == 'channels_first':
-        #         image = tf.transpose(image, [0, 3, 1, 2])
-        #     features = vgg_backbone(image, **config)  # [N, F, H/8, W/8]
-        #     outputs = minutiae_head(features, **config)
-        #     return outputs
-
-        # To do by Zhenyu ZHOU
-        # The fingernail minutiae prediction cannot support homography_adaptation function
         if (mode == Mode.PRED) and config['homography_adaptation']['num']:
             outputs = homography_adaptation_minutiae(image, net, config['homography_adaptation'])
         else:
@@ -63,30 +52,11 @@ class FingernailMinutiae(BaseModel):
 
         return outputs
 
-    # def _loss_will_be_delete(self, outputs, inputs, **config):
-    #     if config['data_format'] == 'channels_first':
-    #         # if outputs['prob'].shape.ndims == 3:
-    #         #     outputs['prob'] = tf.expand_dims(outputs['prob'], 1)
-    #         # outputs['prob'] = tf.transpose(outputs['prob'], [0, 2, 3, 1])
-    #         outputs['c_prob'] = tf.transpose(outputs['c_prob'], [0, 2, 3, 1])
-    #         # if outputs['a_prob'].shape.ndims == 4:
-    #         #     outputs['a_prob'] = tf.transpose(outputs['a_prob'], [0, 2, 3, 1])
-    #     loss = minutiae_loss(outputs, inputs, **config)
-    #     return loss
-
-    # def _loss(self, outputs, inputs, **config):
-    #     loss = minutiae_loss(outputs, inputs, **config)
-    #     return loss
-
     def _loss(self, outputs, inputs, **config):
         if config['data_format'] == 'channels_first':
             outputs['logits'] = tf.transpose(outputs['logits'], [0, 2, 3, 1])
-            outputs['classes_raw'] = tf.transpose(outputs['classes_raw'], [0, 2, 3, 1])
-            outputs['angles_raw'] = tf.transpose(outputs['angles_raw'], [0, 2, 3, 1])
         loss_p = points_loss(inputs['keypoint_map'], outputs['logits'], inputs['valid_mask'], **config)
-        loss_c = classes_loss(inputs['classes_map'], outputs['classes_raw'], inputs['keypoint_map'], **config)
-        loss_a = angles_loss(inputs['angles_map'], outputs['angles_raw'], inputs['keypoint_map'], **config)
-        loss = config['p_loss']*loss_p + config['c_loss']*loss_c + config['a_loss']*loss_a
+        loss = config['p_loss']*loss_p
         return loss
 
     def _metrics(self, outputs, inputs, **config):
@@ -98,14 +68,5 @@ class FingernailMinutiae(BaseModel):
         precision = tf.reduce_sum(pred * labels) / tf.reduce_sum(pred)
         recall = tf.reduce_sum(pred * labels) / tf.reduce_sum(labels)
 
-        # =========== for classification accuracy
-        pred_cls = inputs['valid_mask'] * labels * tf.cast(outputs['classes'], tf.int32)
-        label_cls = inputs['classes_map']
-        cls_acc = tf.reduce_sum(tf.cast(tf.equal(pred_cls, label_cls), tf.int32)) / tf.reduce_sum(labels)
 
-        # =========== for angle accuracy
-        pred_ang = inputs['valid_mask'] * labels * tf.cast(outputs['angles'], tf.int32)
-        label_ang = inputs['angles_map']
-        ang_acc = tf.reduce_sum(tf.cast(tf.equal(pred_ang, label_ang), tf.int32)) / tf.reduce_sum(labels)
-
-        return {'precision': precision, 'recall': recall, 'cls_acc': cls_acc, 'ang_acc': ang_acc}
+        return {'precision': precision, 'recall': recall}

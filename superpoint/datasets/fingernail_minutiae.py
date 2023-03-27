@@ -182,8 +182,6 @@ class FingernailMinutiae(BaseDataset):
             if config['augmentation']['photometric']['enable']:
                 data = data.map_parallel(lambda d: pipeline.photometric_augmentation(
                     d, **config['augmentation']['photometric']))
-            # To do by Zhenyu ZHOU
-            # At present, it cannot support homographic data augmentation for detecting minutiae
             if config['augmentation']['homographic']['enable']:
                 assert not config['warped_pair']['enable']  # doesn't support hom. aug.
                 data = data.map_parallel(lambda d: pipeline.homographic_augmentation_minutiae(

@@ -10,7 +10,7 @@ model:
     nms: 4
     # top_k: 600
     homography_adaptation:
-        num: 0
+        num: 3
         aggregation: 'sum'
         filter_counts: 0
         valid_border_margin: 3
