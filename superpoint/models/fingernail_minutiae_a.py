@@ -52,8 +52,8 @@ class FingernailMinutiaeA(BaseModel):
         labels = inputs['keypoint_map']
 
         # =========== for angle accuracy
-        pred_ang = inputs['valid_mask'] * labels * tf.cast(outputs['angles'], tf.int32)
-        label_ang = inputs['angles_map']
-        ang_acc = tf.reduce_sum(tf.cast(tf.equal(pred_ang, label_ang), tf.int32)) / tf.reduce_sum(labels)
+        pred_ang = tf.cast(tf.equal(outputs['angles'], inputs['angles_map']), tf.int32)
+        pred_ang = inputs['valid_mask'] * labels * pred_ang
+        ang_acc = tf.reduce_sum(pred_ang) / tf.reduce_sum(labels)
 
         return {'ang_acc': ang_acc}
