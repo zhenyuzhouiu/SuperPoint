@@ -297,24 +297,28 @@ def angle_head(inputs, **config):
     cindex = 1 if cfirst else -1  # index of the channel [N, C, H/8, W/8]
 
     with tf.variable_scope('angles', reuse=tf.AUTO_REUSE):
-        x = vgg_block(inputs, 512, 3, 'conv1',
+        x = vgg_block(inputs, 256, 3, 'conv1',
                       activation=tf.nn.relu, **params_conv)
         # output_channel: objectiveness, bifurcation, ending
-        x = vgg_block(x, 181*pow(config['grid_size'], 2), 3, 'conv2',
-                      activation=None, **params_conv)  # [N, 181*64, H/8, W/8]
+        x = vgg_block(x, pow(config['grid_size'], 2), 3, 'conv2',
+                      activation=None, **params_conv)  # [N, 64, H/8, W/8]
 
         # [N, 181, H, W], H*W is the original size of input images
         ang = tf.depth_to_space(x, config['grid_size'],
                                 data_format='NCHW' if cfirst else 'NHWC')
-        ang = tf.nn.softmax(ang, axis=cindex)
-        ang = tf.argmax(ang, axis=cindex)  # [N, H, W]
+        # ang = tf.nn.softmax(ang, axis=cindex)
+        # ang = tf.argmax(ang, axis=cindex)  # [N, H, W]
+        ang = tf.nn.relu(ang)
+        ang = tf.squeeze(ang, cindex)
 
     return {'angles_raw': x, 'angles': ang}
 
 
 def angles_loss(angles_map, angle_raw, valid_maks=None, **config):
-    logits = tf.depth_to_space(angle_raw, config['grid_size'], data_format='NHWC')  # [N, H, W, 181]
-    loss = tf.losses.sparse_softmax_cross_entropy(labels=angles_map, logits=logits, weights=valid_maks)
+    logits = tf.depth_to_space(angle_raw, config['grid_size'], data_format='NHWC')  # [N, H, W, 1]
+    logits = tf.squeeze(logits, axis=-1)
+    loss = tf.losses.huber_loss(labels=angles_map, predictions=logits, weights=valid_maks)
+    # loss = tf.losses.sparse_softmax_cross_entropy(labels=angles_map, logits=logits, weights=valid_maks)
     return loss
 
 

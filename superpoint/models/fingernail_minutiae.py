@@ -1,5 +1,6 @@
 import tensorflow as tf
 
+
 from .base_model import BaseModel, Mode
 from .backbones.vgg import vgg_backbone
 from .utils import minutiae_head, minutiae_loss, box_nms
@@ -99,12 +100,14 @@ class FingernailMinutiae(BaseModel):
         recall = tf.reduce_sum(pred * labels) / tf.reduce_sum(labels)
 
         # =========== for classification accuracy
-        pred_cls = tf.cast(tf.equal(outputs['classes'], inputs['classes_map']), tf.int32)
+        pred_cls = tf.cast(outputs['classes'], tf.int32)
+        pred_cls = tf.cast(tf.equal(pred_cls, inputs['classes_map']), tf.int32)
         pred_cls = inputs['valid_mask'] * labels * pred_cls
         cls_acc = tf.reduce_sum(pred_cls) / tf.reduce_sum(labels)
 
         # =========== for angle accuracy
-        pred_ang = tf.cast(tf.equal(outputs['angles'], inputs['angles_map']), tf.int32)
+        pred_ang = tf.cast(outputs['angles'], tf.int32)
+        pred_ang = tf.cast(tf.equal(pred_ang, inputs['angles_map']), tf.int32)
         pred_ang = inputs['valid_mask'] * labels * pred_ang
         ang_acc = tf.reduce_sum(pred_ang) / tf.reduce_sum(labels)
 

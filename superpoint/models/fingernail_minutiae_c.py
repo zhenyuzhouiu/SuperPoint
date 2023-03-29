@@ -52,7 +52,8 @@ class FingernailMinutiaeC(BaseModel):
         labels = inputs['keypoint_map']
 
         # =========== for classification accuracy
-        pred_cls = tf.cast(tf.equal(outputs['classes'], inputs['classes_map']), tf.int32)
+        pred_cls = tf.cast(outputs['classes'], tf.int32)
+        pred_cls = tf.cast(tf.equal(pred_cls, inputs['classes_map']), tf.int32)
         pred_cls = inputs['valid_mask'] * labels * pred_cls
         cls_acc = tf.reduce_sum(pred_cls) / tf.reduce_sum(labels)
 
