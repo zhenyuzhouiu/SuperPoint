@@ -106,9 +106,9 @@ class FingernailMinutiae(BaseModel):
         cls_acc = tf.reduce_sum(pred_cls) / tf.reduce_sum(labels)
 
         # =========== for angle accuracy
-        pred_ang = tf.cast(outputs['angles'], tf.int32)
-        pred_ang = tf.cast(tf.equal(pred_ang, inputs['angles_map']), tf.int32)
-        pred_ang = inputs['valid_mask'] * labels * pred_ang
-        ang_acc = tf.reduce_sum(pred_ang) / tf.reduce_sum(labels)
+        pred_ang = tf.cast(outputs['angles'], tf.float32)
+        mape = tf.abs(pred_ang - tf.cast(inputs['angles_map'], tf.float32)) / tf.cast(inputs['angles_map'], tf.float32)
+        mape = tf.cast(inputs['valid_mask'], tf.float32) * tf.cast(labels, tf.float32) * mape
+        ang_acc = tf.reduce_sum(mape) / tf.cast(tf.reduce_sum(labels), tf.float32)
 
         return {'precision': precision, 'recall': recall, 'cls_acc': cls_acc, 'ang_acc': ang_acc}
