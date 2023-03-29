@@ -15,7 +15,7 @@ logging.basicConfig(format='[%(asctime)s %(levelname)s] %(message)s',
                     datefmt='%m/%d/%Y %H:%M:%S', level=logging.INFO)
 import tensorflow as tf  # noqa: E402
 
-os.environ['CUDA_VISIBLE_DEVICES'] = "1"
+os.environ['CUDA_VISIBLE_DEVICES'] = "0"
 
 
 def train(config, n_iter, output_dir, pretrained_dir=None,
