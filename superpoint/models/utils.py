@@ -319,6 +319,7 @@ def angles_loss(angles_map, angle_raw, valid_maks=None, **config):
     logits = tf.nn.relu(logits)
     if logits.shape.ndims == 4:
         logits = tf.squeeze(logits, axis=-1)
+    # logits = tf.squeeze(logits, axis=-1)
     loss = tf.losses.huber_loss(labels=angles_map, predictions=logits, weights=valid_maks)
     # loss = tf.losses.sparse_softmax_cross_entropy(labels=angles_map, logits=logits, weights=valid_maks)
     return loss

@@ -80,14 +80,14 @@ def show_file(images_path, points_path, resize=[1080, 1920], visualization='minu
                 dist = 6
                 # math.cos() and math.sin() should give a radian input
                 if 0 <= ang <= 90:
-                    dx = dist * math.cos((ang/180)*math.pi)
-                    dy = dist * math.sin((ang/180)*math.pi)
+                    dx = dist * math.cos((ang / 180) * math.pi)
+                    dy = dist * math.sin((ang / 180) * math.pi)
                     point2 = (int(point[0] + dx), int(point[1] + dy))
                 else:
                     ang = 180 - ang
 
-                    dx = dist * math.cos((ang/180)*math.pi)
-                    dy = dist * math.sin((ang/180)*math.pi)
+                    dx = dist * math.cos((ang / 180) * math.pi)
+                    dy = dist * math.sin((ang / 180) * math.pi)
                     point2 = (int(point[0] - dx), int(point[1] + dy))
                 if cls == 1:  # for bifurcation
                     # bifurcation with red color
@@ -109,6 +109,100 @@ def show_file(images_path, points_path, resize=[1080, 1920], visualization='minu
             plt.figure(1)
             plt.subplot(1, 1, 1)
             plt.imshow(img_float)
+            plt.show()
+
+
+def show_file_opencv(images_path, points_path, resize=[1080, 1920], visualization='minutiae'):
+    """
+    Args:
+        points_path:
+        images_path:
+        resize: [height, width]
+
+    Returns:
+
+    """
+    npz_files = os.listdir(points_path)
+    npz_files.sort()
+    for i in range(200):
+        file_name = npz_files[i]
+        # 读取图像的原始数据
+        image = cv2.imread(os.path.join(images_path, file_name.strip('.npz')+'.jpg'))
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        h, w, c = image.shape
+        dst_image = np.ones([resize[0], resize[1], c])
+
+        scale_h = h/resize[0]
+        scale_w = w/resize[1]
+        scale_ratio = scale_w if scale_h > scale_w else scale_h
+        new_size_h = h/scale_ratio
+        new_size_w = w/scale_ratio
+        pad_h = (resize[0] - new_size_h) / 2
+        pad_w = (resize[1] - new_size_w) / 2
+        if pad_h <= 0 and pad_w <= 0:
+            new_size_h, new_size_w = int(new_size_h), int(new_size_w)
+            pad_h, pad_w = int(pad_h), int(pad_w)
+            resize_image = cv2.resize(image, (int(new_size_w), int(new_size_h)))
+            dst_image[:, :, :] = resize_image[-pad_h:resize[0]-pad_h, -pad_w:resize[1]-pad_w, :]
+        elif pad_h <= 0 < pad_w:
+            new_size_h, new_size_w = int(new_size_h), int(new_size_w)
+            pad_h, pad_w = int(pad_h), int(pad_w)
+            resize_image = cv2.resize(image, (int(new_size_w), int(new_size_h)))
+            dst_image[:, pad_w:new_size_w+pad_w, :] = resize_image[-pad_h:resize[0] - pad_h, :, :]
+        elif pad_h > 0 >= pad_w:
+            new_size_h, new_size_w = int(new_size_h), int(new_size_w)
+            pad_h, pad_w = int(pad_h), int(pad_w)
+            resize_image = cv2.resize(image, (int(new_size_w), int(new_size_h)))
+            dst_image[pad_h:new_size_h+pad_h, :, :] = resize_image[: -pad_w:resize[1] - pad_w, :]
+        else:
+            new_size_h, new_size_w = int(new_size_h), int(new_size_w)
+            pad_h, pad_w = int(pad_h), int(pad_w)
+            resize_image = cv2.resize(image, (int(new_size_w), int(new_size_h)))
+            dst_image[pad_h:new_size_h+pad_h, pad_w:new_size_w+pad_w, :] = resize_image[:, :, :]
+        dst_image = dst_image/255.
+
+        npz = np.load(os.path.join(points_path, file_name))
+        if visualization == 'minutiae':
+            gt = npz['points']
+            gt_c = npz['classes']
+            gt_a = npz['angles']
+            for j in range(gt.shape[0]):
+                point = gt[j]
+                cls = gt_c[j]
+                ang = gt_a[j]
+                point = (int(point[1]), int(point[0]))
+                dist = 6
+                # math.cos() and math.sin() should give a radian input
+                if 0 <= ang <= 90:
+                    dx = dist * math.cos((ang / 180) * math.pi)
+                    dy = dist * math.sin((ang / 180) * math.pi)
+                    point2 = (int(point[0] + dx), int(point[1] + dy))
+                else:
+                    ang = 180 - ang
+
+                    dx = dist * math.cos((ang / 180) * math.pi)
+                    dy = dist * math.sin((ang / 180) * math.pi)
+                    point2 = (int(point[0] - dx), int(point[1] + dy))
+                if cls == 1:  # for bifurcation
+                    # bifurcation with red color
+                    cv2.arrowedLine(dst_image, point, point2, color=[255, 0, 0], thickness=1, tipLength=0.5)
+                else:
+                    # ending with blue color
+                    cv2.arrowedLine(dst_image, point, point2, color=[0, 0, 255], thickness=1, tipLength=0.5)
+
+            plt.figure(1)
+            plt.subplot(1, 1, 1)
+            plt.imshow(dst_image)
+            plt.show()
+        else:
+            gt = npz['points']
+            for j in range(gt.shape[0]):
+                point = gt[j]
+                point = (int(point[1]), int(point[0]))
+                cv2.circle(dst_image, point, radius=1, color=(1, 0, 0), thickness=1)
+            plt.figure(1)
+            plt.subplot(1, 1, 1)
+            plt.imshow(dst_image)
             plt.show()
 
 
@@ -152,10 +246,10 @@ def npz_to_txt(points_path, txt_path):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--images_path', type=str,
-                        default='../data_dir/fingernail/train', help='the source images path',
+                        default='/media/zhenyuzhou/Data/Project/Finger-Nail-Key-Point/datasets/unlabelled/two_session_jpg/session_1', help='the source images path',
                         dest='images_path')
     parser.add_argument('--points_path', type=str,
-                        default='../exper_dir/outputs/fingernail-minutiae-multihead_fingernail_two_session/no_homograph_adaption',
+                        default='/media/zhenyuzhou/Data/Project/Finger-Nail-Key-Point/SuperPoint/exper_dir/outputs/fingernail-minutiae-multihead_fingernail_two_session/no_homograph_adaption_two_session/session1',
                         help='the points position path',
                         dest='points_path')
     parser.add_argument('--txt_path', type=str,
@@ -166,4 +260,5 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # show_file(args.images_path, args.points_path, args.resize, args.visualization)
-    npz_to_txt(args.points_path, args.txt_path)
+    show_file_opencv(args.images_path, args.points_path, args.resize, args.visualization)
+    # npz_to_txt(args.points_path, args.txt_path)
