@@ -15,9 +15,9 @@ from superpoint.settings import EXPER_PATH
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config', type=str, default='configs/fingernail-minutiae_fingernail_export.yaml')
-    parser.add_argument('--experiment_name', type=str, default='fingernail-minutiae-multihead-homograph_fingernail')
-    parser.add_argument('--export_name', type=str, default='fingernail-minutiae-multihead-homograph_fingernail/train')
+    parser.add_argument('--config', type=str, default='configs/fingernail-minutiae-p_export.yaml')
+    parser.add_argument('--experiment_name', type=str, default='fingernail-minutiae-p_fingernail')
+    parser.add_argument('--export_name', type=str, default='fingernail-minutiae-p_fingernail/session1_crop')
     parser.add_argument('--batch_size', type=int, default=43)
     parser.add_argument('--pred_only', action='store_true', default=True)  # default value False
     parser.add_argument('--head_mode', type=str, default='multiple')
@@ -74,30 +74,14 @@ if __name__ == '__main__':
             # for multiple head keys: {'logits': x, 'prob': prob, 'classes_raw': x, 'classes': cls,
             # 'angles_raw': x, 'angles': ang, 'prob_nms': prob, 'pred': pred}
             if args.pred_only:
-                if args.head_mode == 'minutiae':
-                    # output p is an array with [N, H, W]
-                    p = net.predict(data, keys='pred', batch=True)
-                    # for e in p for iterating batch size
-                    # pred = {'points': [(n1,2), (n2,2), (n3,2)]} # from the keypoint map to keypoint position
-                    # np.argwhere == np.array(np.where(e)).T
-                    pred = {'points': [np.array(np.where(e)).T for e in p]}  # (row, column)
-                else:
-                    # output p is an array with [N, H, W]
-                    p = net.predict(data, keys=['prob', 'pred', 'classes', 'angles'], batch=True)
-                    p_prob = p['prob']
-                    p_p = p['pred']
-                    p_c = p['classes']
-                    p_a = p['angles']
-                    pred_prob, pred_p, pred_c, pred_a = [], [], [], []
-                    for b in range(batch_size):
-                        p_pred_i, p_p_i, p_c_i, p_a_i = p_prob[b], p_p[b], p_c[b], p_a[b]
-                        row_index, column_index = np.where(p_p_i)
-                        pred_p.append(np.array((row_index, column_index)).T)
-                        pred_c.append(p_c_i[row_index, column_index].reshape(-1, 1))
-                        pred_a.append(p_a_i[row_index, column_index].reshape(-1, 1))
-                        pred_prob.append(p_pred_i[row_index, column_index].reshape(-1, 1))
-
-                    pred = {'prob': pred_prob, 'points': pred_p, 'classes': pred_c, 'angles': pred_a}
+                # output p is an array with [N, H, W]
+                p = net.predict(data, keys=['pred', 'prob'], batch=True)
+                p_prob = p['prob']
+                p_p = p['pred']
+                # for e in p for iterating batch size
+                # pred = {'points': [(n1,2), (n2,2), (n3,2)]} # from the keypoint map to keypoint position
+                # np.argwhere == np.array(np.where(e)).T
+                pred = {'points': [np.array(e) for e in p_p], 'prob': [np.array(e) for e in p_prob]}  # (row, column)
             else:
                 # pred is a list
                 # pred = {'prob': (batch, h, w), 'counts': (batch, h, w), 'mean_prob': (batch, h, w) ...}

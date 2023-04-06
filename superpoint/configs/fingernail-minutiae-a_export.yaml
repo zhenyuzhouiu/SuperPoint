@@ -3,7 +3,7 @@ data:
     cache_in_memory: false
     validation_size: 129
 model:
-    name: 'fingernail_minutiae'
+    name: 'fingernail_minutiae_a'
     batch_size: 43
     learning_rate: 0.001
     detection_threshold: 0.015  # 0.001

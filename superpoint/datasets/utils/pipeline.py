@@ -79,7 +79,6 @@ def homographic_augmentation_minutiae(data, add_homography=False, **config):
     return ret
 
 
-
 def add_dummy_valid_mask(data):
     """
     Add valid_mask which is a matrix with ones, and the valid_mask has the same shape of data['image']

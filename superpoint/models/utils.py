@@ -309,7 +309,8 @@ def angle_head(inputs, **config):
         # ang = tf.nn.softmax(ang, axis=cindex)
         # ang = tf.argmax(ang, axis=cindex)  # [N, H, W]
         ang = tf.nn.relu(ang)
-        ang = tf.squeeze(ang, cindex)
+        if ang.shape.ndims == 4:
+            ang = tf.squeeze(ang, cindex)
 
     return {'angles_raw': x, 'angles': ang}
 

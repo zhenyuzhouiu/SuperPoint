@@ -45,3 +45,4 @@ model:
     # top_k: 300
 train_iter: 18000000
 validation_interval: 1000
+save_interval: 1000

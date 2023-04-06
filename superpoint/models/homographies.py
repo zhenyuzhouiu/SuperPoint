@@ -474,12 +474,16 @@ def warp_points_angles(points, a_points, homography):
     # Apply the homography
     H_inv = tf.transpose(flat2mat(invert_homography(H)))
     warped_points = tf.tensordot(points, H_inv, [[1], [0]])
+    #  x, y / homogeneous
     warped_points = warped_points[:, :2, :] / warped_points[:, 2:, :]
     warped_points = tf.transpose(warped_points, [2, 0, 1])[:, :, ::-1]  # (x,y) to (y,x)
     warped_points = warped_points[0] if len(homography.shape) == 1 else warped_points
 
     # ============ Transform angle position points
     num_a_points = tf.shape(a_points)[0]
+    if not num_a_points == num_points:
+        raise ValueError('The number of Position Point is not same as Angle Point')
+
     a_points = tf.cast(a_points, tf.float32)[:, ::-1]
     a_points = tf.concat([a_points, tf.ones([num_a_points, 1], dtype=tf.float32)], -1)
     warped_a_points = tf.tensordot(a_points, H_inv, [[1], [0]])

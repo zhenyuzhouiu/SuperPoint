@@ -2,11 +2,11 @@ import math
 import os
 import shutil
 
-os.environ['CUDA_VISIBLE_DEVICES'] = "0"
+
 import cv2
 import argparse
 import numpy as np
-import tensorflow as tf
+
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 
@@ -36,9 +36,12 @@ def show_path(images_path, points_path, mode=''):
         print("The number of images is not equal to the number of ground truth.")
 
 
-def show_file(images_path, points_path, resize=[1080, 1920], visualization='minutiae'):
+def show_file(images_path, points_path, resize=None, visualization='minutiae'):
     """
     Args:
+        visualization:
+        images_path:
+        points_path:
         images_file:
         points_file:
         resize: [height, width]
@@ -46,6 +49,10 @@ def show_file(images_path, points_path, resize=[1080, 1920], visualization='minu
     Returns:
 
     """
+    os.environ['CUDA_VISIBLE_DEVICES'] = "0"
+    import tensorflow as tf
+    if resize is None:
+        resize = [1080, 1920]
     npz_files = os.listdir(points_path)
     npz_files.sort()
     for i in range(200):
@@ -112,9 +119,12 @@ def show_file(images_path, points_path, resize=[1080, 1920], visualization='minu
             plt.show()
 
 
-def show_file_opencv(images_path, points_path, resize=[1080, 1920], visualization='minutiae'):
+# the visualization of show_file_opencv is same as show_file function
+def show_file_opencv(images_path, points_path, resize=None, visualization='minutiae'):
+
     """
     Args:
+        visualization:
         points_path:
         images_path:
         resize: [height, width]
@@ -122,6 +132,8 @@ def show_file_opencv(images_path, points_path, resize=[1080, 1920], visualizatio
     Returns:
 
     """
+    if resize is None:
+        resize = [1080, 1920]
     npz_files = os.listdir(points_path)
     npz_files.sort()
     for i in range(200):
@@ -246,14 +258,14 @@ def npz_to_txt(points_path, txt_path):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--images_path', type=str,
-                        default='/media/zhenyuzhou/Data/Project/Finger-Nail-Key-Point/datasets/unlabelled/two_session_jpg/session_1', help='the source images path',
+                        default='../data_dir/fingernail/train/', help='the source images path',
                         dest='images_path')
     parser.add_argument('--points_path', type=str,
-                        default='/media/zhenyuzhou/Data/Project/Finger-Nail-Key-Point/SuperPoint/exper_dir/outputs/fingernail-minutiae-multihead_fingernail_two_session/no_homograph_adaption_two_session/session1',
+                        default='../exper_dir/outputs/fingernail-minutiae-multihead-homograph_fingernail/train',
                         help='the points position path',
                         dest='points_path')
     parser.add_argument('--txt_path', type=str,
-                        default='../exper_dir/outputs/fingernail-minutiae-multihead_fingernail_two_session/no_homograph_adaption_txt')
+                        default='../exper_dir/outputs/fingernail-minutiae-multihead-homograph_fingernail/unmatched_txt')
     parser.add_argument('--resize', type=int, default=[240, 320], help='resize the source image to the size [h, w]',
                         dest='resize')
     parser.add_argument('--visualization', type=str, default='minutiae', dest='visualization')
