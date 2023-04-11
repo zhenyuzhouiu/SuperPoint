@@ -14,7 +14,7 @@ class FingernailMinutiae(BaseDataset):
         'validation_size': 100,
         'truncate': None,
         'preprocessing': {
-            'resize': [240, 320]
+            'resize': [480, 640]
         },
         'num_parallel_calls': 10,
         'augmentation': {
@@ -150,7 +150,7 @@ class FingernailMinutiae(BaseDataset):
             classes = classes.map(lambda c: tf.reshape(c, [-1, 1]))  # [num_points, 1]
             angles = angles.map(lambda a: tf.reshape(a, [-1, 1]))  # [num_points, 1]
             data = tf.data.Dataset.zip((data, points)).map(lambda d, p: {**d, 'keypoints': p})
-            data = tf.data.Dataset.zip((data, a_points)).map(lambda d, p: {**d, 'a_points': p})
+            data = tf.data.Dataset.zip((data, a_points)).map(lambda d, ap: {**d, 'a_points': ap})
             data = tf.data.Dataset.zip((data, classes)).map(lambda d, c: {**d, 'classes': c})
             data = tf.data.Dataset.zip((data, angles)).map(lambda d, a: {**d, 'angles': a})
             data = data.map(pipeline.add_dummy_valid_mask)

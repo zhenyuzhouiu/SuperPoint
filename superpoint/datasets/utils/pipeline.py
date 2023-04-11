@@ -129,7 +129,7 @@ def add_keypoint_classe_angle_map(data):
         cmap = tf.clip_by_value(cmap, 0, 2)  # [0, 1, 2]
     # To do by Zhenyu ZHOU
     # At present, it cannot support CSL for angular loss
-    with tf.name_scope('add_keypoint_map'):
+    with tf.name_scope('add_angles_map'):
         image_shape = tf.shape(data['image'])[:2]
         kp = tf.minimum(tf.to_int32(tf.round(data['keypoints'])), image_shape-1)
         # tf.to_int32(tf.squeeze(data['angles'])) [0, 1, 2, 3 ... 179] + 1

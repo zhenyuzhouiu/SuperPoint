@@ -1,8 +1,8 @@
 data:
-    name: 'fingernail'
-    labels: outputs/magic_point_fingernail-label-240-320  # Complete with your export labels
+    name: 'fingernail_minutiae'
+    labels: outputs/fingernail-minutiae_label  # Complete with your export labels
     cache_in_memory: false
-    validation_size: 129
+    validation_size: 160
     augmentation:
         photometric:
             enable: true
@@ -33,12 +33,13 @@ data:
                 allow_artifacts: true
             valid_border_margin: 3
 model:
-    name: 'fingernail_point'
-    batch_size: 43
-    eval_batch_size: 43
+    name: 'magic_point'
+    batch_size: 16
+    eval_batch_size: 16
     learning_rate: 0.001
     detection_threshold: 0.001 # 0.015
     nms: 4
     # top_k: 300
 train_iter: 18000000
 validation_interval: 1000
+save_interval: 1000

@@ -461,7 +461,12 @@ def warp_points_angles(points, a_points, homography):
 
       Returns: a Tensor of shape (N, 2) or (B, N, 2) (depending on whether the homography
               is batched) containing the new coordinates of the warped points.
-      """
+    """
+    shape_points = points.shape.as_list()
+    shape_a_points = a_points.shape.as_list()
+    if not shape_points == shape_a_points:
+        raise ValueError('The number of Position Point is not same as Angle Point')
+
     H = tf.expand_dims(homography, axis=0) if len(homography.shape) == 1 else homography  # (B, 8) or (1, 8)
     # ============ Transform position points
     # Get the points to the homogeneous format
@@ -481,9 +486,6 @@ def warp_points_angles(points, a_points, homography):
 
     # ============ Transform angle position points
     num_a_points = tf.shape(a_points)[0]
-    if not num_a_points == num_points:
-        raise ValueError('The number of Position Point is not same as Angle Point')
-
     a_points = tf.cast(a_points, tf.float32)[:, ::-1]
     a_points = tf.concat([a_points, tf.ones([num_a_points, 1], dtype=tf.float32)], -1)
     warped_a_points = tf.tensordot(a_points, H_inv, [[1], [0]])
@@ -502,7 +504,8 @@ def warp_points_angles(points, a_points, homography):
         positive_angles = angles + 180
         # tf.where(condition, x, y) if condition is true x else y
         warped_angles = tf.where(tf.less(angles, 0), positive_angles, angles)
-        warped_angles = tf.expand_dims(warped_angles, axis=-1)  # [N, 1]
+        if warped_angles.shape.ndims == 1:
+            warped_angles = tf.expand_dims(warped_angles, axis=-1)  # [N, 1]
     else:  # [B, N, 2]
         diff_x = warped_a_points[:, :, 1] - warped_points[:, :, 1]  # [B, N]
         constant_x = tf.ones_like(diff_x, dtype=tf.float32) * 0.00000000000001
@@ -512,7 +515,8 @@ def warp_points_angles(points, a_points, homography):
         angles = (tf.math.atan(tan_angle) / pi) * 180
         positive_angles = angles + 180
         warped_angles = tf.where(tf.less(angles, 0), positive_angles, angles)
-        warped_angles = tf.expand_dims(warped_angles, axis=-1)  # [B, N, 1]
+        if warped_angles.shape.ndims == 2:
+            warped_angles = tf.expand_dims(warped_angles, axis=-1)  # [B, N, 1]
 
     return warped_points, warped_a_points, warped_angles
 

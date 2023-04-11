@@ -29,7 +29,7 @@ def train(config, n_iter, output_dir, pretrained_dir=None,
                       validation_interval=config.get('validation_interval', 100),
                       save_interval=config.get('save_interval', None),
                       checkpoint_path=checkpoint_path,
-                      keep_checkpoints=config.get('keep_checkpoints', 1))
+                      keep_checkpoints=config.get('keep_checkpoints', 20))
         except KeyboardInterrupt:
             logging.info('Got Keyboard Interrupt, saving model and closing.')
         net.save(os.path.join(output_dir, checkpoint_name))

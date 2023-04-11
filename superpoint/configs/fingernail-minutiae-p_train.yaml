@@ -1,8 +1,8 @@
 data:
     name: 'fingernail_minutiae'
-    labels: outputs/fingernail-minutiae_apoint_label  # Complete with your export labels
+    labels: outputs/fingernail-minutiae_label  # Complete with your export labels
     cache_in_memory: false
-    validation_size: 128
+    validation_size: 160
     augmentation:
         photometric:
             enable: true
@@ -34,14 +34,14 @@ data:
             valid_border_margin: 3
 model:
     name: 'fingernail_minutiae_p'
-    batch_size: 30
-    eval_batch_size: 32
+    batch_size: 16
+    eval_batch_size: 16
     learning_rate: 0.001
     detection_threshold: 0.001 # 0.015
     nms: 4
     p_loss: 1
-    c_loss: 0.5
-    a_loss: 0.5
+    c_loss: 1
+    a_loss: 1
     # top_k: 300
 train_iter: 18000000
 validation_interval: 1000

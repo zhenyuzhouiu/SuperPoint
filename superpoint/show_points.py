@@ -206,7 +206,7 @@ def show_file_opencv(images_path, points_path, resize=None, visualization='minut
             plt.subplot(1, 1, 1)
             plt.imshow(dst_image)
             plt.show()
-        else:
+        elif visualization == 'point':
             gt = npz['points']
             for j in range(gt.shape[0]):
                 point = gt[j]
@@ -216,6 +216,30 @@ def show_file_opencv(images_path, points_path, resize=None, visualization='minut
             plt.subplot(1, 1, 1)
             plt.imshow(dst_image)
             plt.show()
+        elif visualization == 'apoint':
+            gt_p = npz['points']
+            gt_ap = npz['a_point']
+            gt_c = npz['classes']
+            gt_a = npz['angles']
+            for j in range(gt_p.shape[0]):
+                point = gt_p[j]
+                a_point = gt_ap[j]
+                cls = gt_c[j]
+                ang = gt_a[j]
+                point = (int(point[1]), int(point[0]))
+                a_point = (int(a_point[1]), int(a_point[0]))
+                if cls == 1:  # for bifurcation
+                    cv2.line(dst_image, point, a_point, color=[1.0, 0, 0], thickness=1)
+                else:
+                    # ending with blue color
+                    cv2.line(dst_image, point, a_point, color=[0, 0, 1.], thickness=1)
+
+            plt.figure(1)
+            plt.subplot(1, 1, 1)
+            plt.imshow(dst_image)
+            plt.show()
+        else:
+            assert 'Please give a right visualization mode'
 
 
 def npz_to_txt(points_path, txt_path):
@@ -261,14 +285,14 @@ if __name__ == "__main__":
                         default='../data_dir/fingernail/train/', help='the source images path',
                         dest='images_path')
     parser.add_argument('--points_path', type=str,
-                        default='../exper_dir/outputs/fingernail-minutiae-multihead-homograph_fingernail/train',
+                        default='../exper_dir/outputs/fingernail-minutiae_label/',
                         help='the points position path',
                         dest='points_path')
     parser.add_argument('--txt_path', type=str,
                         default='../exper_dir/outputs/fingernail-minutiae-multihead-homograph_fingernail/unmatched_txt')
-    parser.add_argument('--resize', type=int, default=[240, 320], help='resize the source image to the size [h, w]',
+    parser.add_argument('--resize', type=int, default=[480, 640], help='resize the source image to the size [h, w]',
                         dest='resize')
-    parser.add_argument('--visualization', type=str, default='minutiae', dest='visualization')
+    parser.add_argument('--visualization', type=str, default='apoint', dest='visualization')
     args = parser.parse_args()
 
     # show_file(args.images_path, args.points_path, args.resize, args.visualization)
