@@ -15,7 +15,7 @@ logging.basicConfig(format='[%(asctime)s %(levelname)s] %(message)s',
                     datefmt='%m/%d/%Y %H:%M:%S', level=logging.INFO)
 import tensorflow as tf  # noqa: E402
 
-os.environ['CUDA_VISIBLE_DEVICES'] = "1"
+os.environ['CUDA_VISIBLE_DEVICES'] = "0"
 
 
 def train(config, n_iter, output_dir, pretrained_dir=None,
@@ -156,7 +156,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     with open(args.config, 'r') as f:
-        config = yaml.load(f)
+        config = yaml.safe_load(f)
     output_dir = os.path.join(EXPER_PATH, args.exper_name)
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
