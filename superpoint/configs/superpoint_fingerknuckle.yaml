@@ -2,7 +2,7 @@ data:
     name: 'fingerknuckle'
     cache_in_memory: false
     validation_size: 96
-    labels: outputs/fingerknuckle_keypoint_gt  # use your own labels here
+    labels: outputs/magic-point_fingerknuckle-export1  # use your own labels here
     augmentation:
         photometric:
             enable: true
@@ -46,5 +46,5 @@ model:
     detection_threshold: 0.001
     nms: 4
     # top_k: 600
-train_iter: 60000000
+train_iter: 1500000
 validation_interval: 5000

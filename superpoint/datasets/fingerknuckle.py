@@ -14,7 +14,7 @@ class Fingerknuckle(BaseDataset):
         'validation_size': 100,
         'truncate': None,
         'preprocessing': {
-            'resize': [200, 152]
+            'resize': [200, 152]  # [h, w]
         },
         'num_parallel_calls': 10,
         'augmentation': {
@@ -38,7 +38,7 @@ class Fingerknuckle(BaseDataset):
     }
 
     def _init_dataset(self, **config):
-        base_path = Path(DATA_PATH, 'FINGERKNUCKLE/train/')
+        base_path = Path(DATA_PATH, 'FINGERKNUCKLE/L2/')
         image_paths = list(base_path.iterdir())
         if config['truncate']:
             image_paths = image_paths[:config['truncate']]
