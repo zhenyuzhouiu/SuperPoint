@@ -5,5 +5,7 @@ settings.py
 data_dir/
 exper_dir/
 .idea/
+.DS_Store
+*.DS_Store
 pretrained_models/sp_v6/
 superpoint.egg-info/
