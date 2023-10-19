@@ -1,3 +1,6 @@
+import warnings
+warnings.warn('ignore', FutureWarning)
+warnings.warn('ignore', DeprecationWarning)
 import logging
 import yaml
 import os
@@ -15,7 +18,11 @@ logging.basicConfig(format='[%(asctime)s %(levelname)s] %(message)s',
                     datefmt='%m/%d/%Y %H:%M:%S', level=logging.INFO)
 import tensorflow as tf  # noqa: E402
 
-os.environ['CUDA_VISIBLE_DEVICES'] = "0"
+os.environ['CUDA_VISIBLE_DEVICES'] = "1"
+
+physical_devices = tf.config.experimental.list_physical_devices('GPU')
+assert len(physical_devices) > 0, "Not enough GPU hardware devices available"
+config = tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
 
 def train(config, n_iter, output_dir, pretrained_dir=None,

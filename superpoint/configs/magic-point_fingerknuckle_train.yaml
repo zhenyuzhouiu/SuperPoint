@@ -1,6 +1,6 @@
 data:
     name: 'fingerknuckle'
-    labels: outputs/fingerknuckle_keypoint_gt/  # Complete with your export labels
+    labels: outputs/mp_synth-v11_ha1_trained-Left/  # Complete with your export labels
     cache_in_memory: false
     validation_size: 192
     augmentation:
@@ -40,5 +40,5 @@ model:
     detection_threshold: 0.001 # 0.015
     nms: 4
     # top_k: 300
-train_iter: 180000
+train_iter: 1800000
 validation_interval: 1000

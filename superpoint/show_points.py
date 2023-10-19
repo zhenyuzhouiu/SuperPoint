@@ -282,17 +282,17 @@ def npz_to_txt(points_path, txt_path):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--images_path', type=str,
-                        default='../data_dir/fingernail/train/', help='the source images path',
+                        default='/mnt/Data/superpoint/data/FINGERKNUCKLE/Left', help='the source images path',
                         dest='images_path')
     parser.add_argument('--points_path', type=str,
-                        default='../exper_dir/outputs/fingernail-minutiae_label/',
+                        default='/mnt/Data/superpoint/exper/outputs/mp_synth-v11_ha1_trained-Left/',
                         help='the points position path',
                         dest='points_path')
     parser.add_argument('--txt_path', type=str,
                         default='../exper_dir/outputs/fingernail-minutiae-multihead-homograph_fingernail/unmatched_txt')
-    parser.add_argument('--resize', type=int, default=[480, 640], help='resize the source image to the size [h, w]',
+    parser.add_argument('--resize', type=int, default=[200, 152], help='resize the source image to the size [h, w]',
                         dest='resize')
-    parser.add_argument('--visualization', type=str, default='apoint', dest='visualization')
+    parser.add_argument('--visualization', type=str, default='point', dest='visualization')
     args = parser.parse_args()
 
     # show_file(args.images_path, args.points_path, args.resize, args.visualization)
