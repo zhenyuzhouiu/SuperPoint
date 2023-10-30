@@ -38,7 +38,7 @@ class Fingerknuckle(BaseDataset):
     }
 
     def _init_dataset(self, **config):
-        base_path = Path(DATA_PATH, 'FINGERKNUCKLE/Left/')
+        base_path = Path(DATA_PATH, 'FINGERKNUCKLE/HD-R3-Copy/')
         image_paths = list(base_path.iterdir())
         if config['truncate']:
             image_paths = image_paths[:config['truncate']]

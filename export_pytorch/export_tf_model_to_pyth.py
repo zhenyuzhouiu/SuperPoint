@@ -186,10 +186,10 @@ def sp_pyth_batch(subject_path, sp_pyth, image_size):
 if __name__ == "__main__":
     detection_thresh = 0.015
     nms_radius = 5
-    ckpt_path = "/mnt/Data/superpoint/exper/superpoint_fingerknucklev1/model.ckpt-2754610"
-    pth_path = "/mnt/Data/superpoint/exper/superpoint_fingerknucklev1/superpoint_from_tf.pth"
-    image_path = "/mnt/Data/PolyUFKVideo/R2-10/0001_R2/0001_R2_1.jpg"
-    subject_path = "/mnt/Data/PolyUFKV3/Session_1/all/"
+    ckpt_path = "/mnt/Data/superpoint/exper/superpoint_fingerknuckleleftv3/model.ckpt-2100000"
+    pth_path = "/mnt/Data/superpoint/exper/superpoint_fingerknuckleleftv3/sp_fkleftv3-2100000.pth"
+    image_path = "/mnt/Data/Project/Finger-Knuckle-Video/dataset_exp2/dataset/R2-10/0001_R2/0001_R2_1.jpg"
+    subject_path = "/mnt/Data/Finger-Knuckle-Database/PolyUKnuckleV3/YOLOv5_Segment/184_208/Session_1/all/"
     image_size = [152, 200]
 
     # construct superpoint pytorch model

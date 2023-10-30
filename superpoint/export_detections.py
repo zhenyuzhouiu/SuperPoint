@@ -3,7 +3,7 @@ import os
 import tensorflow as tf
 # export LD_LIBRARY_PATH=/usr/local/cuda-10.0/lib64:$LD_LIBRARY_PATH
 # export PATH=/usr/local/cuda-10.0/bin:$PATH
-os.environ['CUDA_VISIBLE_DEVICES'] = "0"
+os.environ['CUDA_VISIBLE_DEVICES'] = "1"
 gpu = tf.config.experimental.list_physical_devices('GPU')
 tf.config.experimental.set_memory_growth(device=gpu[0], enable=True)
 import argparse
