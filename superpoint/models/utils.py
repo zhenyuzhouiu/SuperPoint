@@ -78,18 +78,70 @@ def detector_loss(keypoint_map, logits, valid_mask=None, **config):
     # then we randomly select one ground truth corner location
     labels = tf.argmax(labels + tf.random_uniform(tf.shape(labels), 0, 0.1),
                        axis=3)  # [N, H/8, W/8] with labels
-
+    
     # Mask the pixels if bordering artifacts appear
     valid_mask = tf.ones_like(keypoint_map) if valid_mask is None else valid_mask
     valid_mask = tf.to_float(valid_mask[..., tf.newaxis])  # for GPU  # [N, H, W, 1]
     valid_mask = tf.space_to_depth(valid_mask, config['grid_size'])  # [N, H/8, W/8, 64]
     # computes tf.math.multiply of elements across dimensions of a tensor
     valid_mask = tf.reduce_prod(valid_mask, axis=3)  # AND along the channel dim [N, H/8, W/8]
-
+    
+    # ========== For high resolution (74x100) 592x800, 
+    # the positive samples are too small when compared to the negative samples
     loss = tf.losses.sparse_softmax_cross_entropy(
             labels=labels, logits=logits, weights=valid_mask)
     return loss
 
+
+def detector_focal_loss(keypoint_map, logits, valid_mask=None, **config):
+    """_summary_
+
+    Args:
+        keypoint_map (_type_): [N, H, W]
+        logits (_type_): # [N, 65, H/8, W/8]
+        valid_mask (_type_, optional): _description_. Defaults to None.
+
+    Returns:
+        _type_: _description_
+    """
+    # Convert the boolean labels to indices including the "no interest point" dustbin
+    labels = tf.to_float(keypoint_map[..., tf.newaxis])  # for GPU  [N, H, W, 1]
+    labels = tf.space_to_depth(labels, config['grid_size'])  # [N, H/8, W/8, 64]
+    # tf.shape() return tf.Tensor
+    shape = tf.concat([tf.shape(labels)[:3], [1]], axis=0)  # [N, H/8, W/8, 1]
+    labels = tf.concat([2*labels, tf.ones(shape)], 3)  # [N, H/8/ W/8, 65]
+    # Add a small random matrix to randomly break ties in argmax
+    # If two ground truth corner positions land in the same bin,
+    # then we randomly select one ground truth corner location
+    labels = tf.argmax(labels + tf.random_uniform(tf.shape(labels), 0, 0.1),
+                       axis=3)  # [N, H/8, W/8] with labels
+    
+    # Mask the pixels if bordering artifacts appear
+    valid_mask = tf.ones_like(keypoint_map) if valid_mask is None else valid_mask
+    valid_mask = tf.to_float(valid_mask[..., tf.newaxis])  # for GPU  # [N, H, W, 1]
+    valid_mask = tf.space_to_depth(valid_mask, config['grid_size'])  # [N, H/8, W/8, 64]
+    # computes tf.math.multiply of elements across dimensions of a tensor
+    valid_mask = tf.reduce_prod(valid_mask, axis=3)  # AND along the channel dim [N, H/8, W/8]
+    
+    # ========== For high resolution (74x100) 592x800, 
+    # focal loss: for y = 1: FL(p_t) = -alpha (1-p_t)^gamma log(p_t)
+    #             for y = 0: FL(p_t) = -(1-alpha) (p_t)^gamma log(1- p_t)
+    # the positive samples are too small when compared to the negative samples
+    # labels.shape [N, H/8, W/8] logits.shape [N, H/8, W/8, 65]
+    labels_one_hot = tf.one_hot(labels, depth=tf.shape(logits)[-1]) # [N, H/8, W/8, 65]
+    # logits = tf.transpose(logits, perm=[0, 2, 3, 1]) # [N, H/8, W/8, 65]
+    # cross_entropy = tf.nn.softmax_cross_entropy_with_logits(labels=labels_one_hot, logits=logits)
+    probs = tf.nn.softmax(logits, axis=-1) + 1e-8
+    log_probs_pos = tf.math.log(probs)
+    log_probs_neg = tf.math.log(1.0-probs)
+    focal_weight_pos = tf.pow(1-probs, 2.0)
+    focal_weight_neg = tf.pow(probs, 2.0)
+    alpha_t = 0.25 * labels_one_hot + (1-0.25)*(1-labels_one_hot)
+    focal_loss_pos = -alpha_t * focal_weight_pos * log_probs_pos
+    focal_loss_neg = -alpha_t * focal_weight_neg * log_probs_neg
+    focal_loss = labels_one_hot * focal_loss_pos + (1-labels_one_hot) * focal_loss_neg
+    loss = tf.reduce_sum(focal_loss, axis=-1)
+    return tf.reduce_mean(loss)
 
 def detector_mse_loss(keypoint_map, prob, valid_mask=None, **config):
 

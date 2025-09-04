@@ -2,7 +2,7 @@ import tensorflow as tf
 
 from .base_model import BaseModel, Mode
 from .backbones.vgg import vgg_backbone
-from .utils import detector_head, detector_loss, box_nms
+from .utils import detector_head, detector_loss, box_nms, detector_focal_loss
 from .homographies import homography_adaptation
 
 
@@ -67,8 +67,12 @@ class MagicPoint(BaseModel):
     def _loss(self, outputs, inputs, **config):
         if config['data_format'] == 'channels_first':
             outputs['logits'] = tf.transpose(outputs['logits'], [0, 2, 3, 1])
-        return detector_loss(inputs['keypoint_map'], outputs['logits'],
-                             valid_mask=inputs['valid_mask'], **config)
+        # return detector_loss(inputs['keypoint_map'], outputs['logits'],
+        #                      valid_mask=inputs['valid_mask'], **config)
+        return detector_focal_loss(inputs['keypoint_map'], outputs['logits'],
+                                   valid_mask=inputs['valid_mask'], **config)
+    
+    
 
     def _metrics(self, outputs, inputs, **config):
         pred = inputs['valid_mask'] * outputs['pred']

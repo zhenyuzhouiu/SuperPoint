@@ -167,6 +167,7 @@ def sp_pyth_batch(subject_path, sp_pyth, image_size):
     for subject in list_subject:
         images = []
         list_file = os.listdir(os.path.join(subject_path, subject))
+        # list_file = list_file[105:110]  # 
         for file in list_file:
             images.append(load_image(os.path.join(subject_path, subject, file), image_size, rgb=False) / 255.)
         h, w = np.array([i.shape for i in images]).min(0)
@@ -186,11 +187,11 @@ def sp_pyth_batch(subject_path, sp_pyth, image_size):
 if __name__ == "__main__":
     detection_thresh = 0.015
     nms_radius = 5
-    ckpt_path = "/mnt/Data/superpoint/exper/superpoint_fingerknuckleleftv3/model.ckpt-2100000"
-    pth_path = "/mnt/Data/superpoint/exper/superpoint_fingerknuckleleftv3/sp_fkleftv3-2100000.pth"
-    image_path = "/mnt/Data/Project/Finger-Knuckle-Video/dataset_exp2/dataset/R2-10/0001_R2/0001_R2_1.jpg"
-    subject_path = "/mnt/Data/Finger-Knuckle-Database/PolyUKnuckleV3/YOLOv5_Segment/184_208/Session_1/all/"
-    image_size = [152, 200]
+    ckpt_path = "/mnt/Data/superpoint/exper/superpoint-diffpalm/model.ckpt-3400000"
+    pth_path = "/mnt/Data/superpoint/exper/superpoint-diffpalm/sp_diffpalm_3400000.pth"
+    image_path = "/mnt/Data/superpoint/data/DiffPalm/20k/100.jpg"
+    subject_path = "/mnt/Data/superpoint/data/DiffPalm/"
+    image_size = [128, 128]
 
     # construct superpoint pytorch model
     sp_pyth = init_sp_pyth(detection_thresh, nms_radius)

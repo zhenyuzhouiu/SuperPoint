@@ -1,6 +1,6 @@
 import warnings
-warnings.warn('ignore', FutureWarning)
-warnings.warn('ignore', DeprecationWarning)
+warnings.filterwarnings('ignore', category=FutureWarning)
+warnings.filterwarnings('ignore', category=DeprecationWarning)
 import logging
 import yaml
 import os

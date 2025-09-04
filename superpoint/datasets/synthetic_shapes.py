@@ -38,7 +38,7 @@ class SyntheticShapes(BaseDataset):
                 },
             },
             'preprocessing': {
-                'resize': [240, 320],
+                'resize': [800, 592],  # default [240, 320] [h,w]
                 'blur_size': 11,
             },
             'augmentation': {

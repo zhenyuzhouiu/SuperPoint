@@ -1,6 +1,6 @@
 data:
-    name: 'fingerknuckle'
-    labels: outputs/magic-point_fingerknuckle296x400-Left/  # Complete with your export labels
+    name: 'diffpalm'
+    labels: outputs/diffpalm_gt/  # Complete with your export labels
     cache_in_memory: false
     validation_size: 192
     augmentation:
@@ -34,12 +34,12 @@ data:
             valid_border_margin: 3
 model:
     name: 'magic_point'
-    batch_size: 12 # default 32 for [152, 200], 6 for [592, 600]
-    eval_batch_size: 12 # default 32 for [152, 200], 6 for [592, 600]
+    batch_size: 32 # default 32 for [152, 200], 6 for [592, 600]
+    eval_batch_size: 32 # default 32 for [152, 200], 6 for [592, 600]
     learning_rate: 0.001
     detection_threshold: 0.001 # 0.015
     nms: 4
     # top_k: 300
-train_iter: 1800000
+train_iter: 18000000
 validation_interval: 1000
-save_interval: 10000
+save_interval: 18000

@@ -1,16 +1,16 @@
 data:
-    name: 'fingernail_minutiae'
+    name: 'diffpalm'
     cache_in_memory: false
-    validation_size: 129
+    validation_size: 100
 model:
-    name: 'fingernail_minutiae_c'
+    name: 'super_point'
     batch_size: 128
     learning_rate: 0.001
     detection_threshold: 0.015  # 0.001
     nms: 4
     # top_k: 600
     homography_adaptation:
-        num: 0
+        num: 1
         aggregation: 'sum'
         filter_counts: 0
         valid_border_margin: 3
@@ -25,3 +25,5 @@ model:
             allow_artifacts: true
             patch_ratio: 0.85
 eval_iter: -1
+
+

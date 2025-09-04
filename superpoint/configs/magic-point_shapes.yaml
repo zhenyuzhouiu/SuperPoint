@@ -8,7 +8,7 @@ data:
     add_augmentation_to_test_set: false  # set to true to evaluate with noise
     preprocessing:
         blur_size: 21
-        resize: [120, 160]  # Should be multiples of 8
+        resize: [800, 592]  # Should be multiples of 8 [h,w]  [200, 152], [184, 152], [800, 592]
     augmentation:
         photometric:
             enable: true
@@ -41,8 +41,8 @@ data:
             valid_border_margin: 2
 model:
     name: 'magic_point'
-    batch_size: 64
-    eval_batch_size: 50
+    batch_size: 1 # default 64
+    eval_batch_size: 1
     learning_rate: 0.001
     kernel_reg: 0.
     detection_threshold: 0.001 # 1/65
@@ -50,6 +50,7 @@ model:
 train_iter: 200000
 eval_iter: 200
 validation_interval: 1000
+save_interval: 5000
 seed: 0
-#save_interval: 5000
+
 #keep_checkpoints: 20

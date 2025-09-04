@@ -1,7 +1,7 @@
 import numpy as np
 import os
 import tensorflow as tf
-os.environ['CUDA_VISIBLE_DEVICES'] = "1"
+os.environ['CUDA_VISIBLE_DEVICES'] = "0"
 gpu = tf.config.experimental.list_physical_devices('GPU')
 tf.config.experimental.set_memory_growth(device=gpu[0], enable=True)
 import argparse
@@ -15,11 +15,11 @@ from superpoint.settings import EXPER_PATH
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config', type=str, default='configs/fingernail-minutiae-p_export.yaml')
-    parser.add_argument('--experiment_name', type=str, default='fingernail-minutiae-p_fingernail')
-    parser.add_argument('--export_name', type=str, default='fingernail-minutiae-p_fingernail/session1_crop')
-    parser.add_argument('--batch_size', type=int, default=43)
-    parser.add_argument('--pred_only', action='store_true', default=True)  # default value False
+    parser.add_argument('--config', type=str, default='configs/fingernail-minutiae-c_export.yaml')
+    parser.add_argument('--experiment_name', type=str, default='magic-point_fingerknuckleminutiae152x184')
+    parser.add_argument('--export_name', type=str, default='magic-point_fingerknuckleminutiae152x184_HD')
+    parser.add_argument('--batch_size', type=int, default=128)
+    parser.add_argument('--pred_only', action='store_true', default=False)  # default value False
     parser.add_argument('--head_mode', type=str, default='multiple')
     args = parser.parse_args()
 
@@ -27,7 +27,7 @@ if __name__ == '__main__':
     export_name = args.export_name if args.export_name else experiment_name
     batch_size = args.batch_size
     with open(args.config, 'r') as f:
-        config = yaml.load(f)
+        config = yaml.load(f, Loader=yaml.FullLoader)
     assert 'eval_iter' in config
 
     output_dir = Path(EXPER_PATH, 'outputs/{}/'.format(export_name))
@@ -74,14 +74,25 @@ if __name__ == '__main__':
             # for multiple head keys: {'logits': x, 'prob': prob, 'classes_raw': x, 'classes': cls,
             # 'angles_raw': x, 'angles': ang, 'prob_nms': prob, 'pred': pred}
             if args.pred_only:
-                # output p is an array with [N, H, W]
-                p = net.predict(data, keys=['pred', 'prob'], batch=True)
-                p_prob = p['prob']
-                p_p = p['pred']
-                # for e in p for iterating batch size
-                # pred = {'points': [(n1,2), (n2,2), (n3,2)]} # from the keypoint map to keypoint position
-                # np.argwhere == np.array(np.where(e)).T
-                pred = {'points': [np.array(e) for e in p_p], 'prob': [np.array(e) for e in p_prob]}  # (row, column)
+                # # ========== export for position
+                # # output p is an array with [N, H, W]
+                # p = net.predict(data, keys=['pred', 'prob'], batch=True)
+                # p_prob = p['prob']
+                # p_p = p['pred']
+                # # for e in p for iterating batch size
+                # # pred = {'points': [(n1,2), (n2,2), (n3,2)]} # from the keypoint map to keypoint position
+                # # np.argwhere == np.array(np.where(e)).T
+                # pred = {'points': [np.array(e) for e in p_p], 'prob': [np.array(e) for e in p_prob]}  # (row, column)
+                # ========== export for classes
+                p = net.predict(data, keys=['classes'], batch=True)
+                p_c = p['classes']
+                pred = {'classes': [np.array(e) for e in p_c]}  # (row, column)
+                
+                
+                # ========== export for angles
+                # p = net.predict(data, keys=['angles'], batch=True)
+                # p_a = p['angles']
+                # pred = {'angles': [np.array(e) for e in p_a]}  # (row, column)
             else:
                 # pred is a list
                 # pred = {'prob': (batch, h, w), 'counts': (batch, h, w), 'mean_prob': (batch, h, w) ...}
@@ -99,5 +110,5 @@ if __name__ == '__main__':
                 i += 1
                 pbar.update(1)
 
-            if config['eval_iter'] > 0 and i >= config['eval_iter']:
+            if 0 < config['eval_iter'] <= i:
                 break
